@@ -1,23 +1,25 @@
-import logo from './logo.svg';
+import  React from 'react';
+import Board from './components/board';
+import Row from './components/row';
 import './App.css';
 
 function App() {
+
+  const board_CI = [
+    ["AND","AND","AND", "AND"],
+    ["AND","","AND", "AND"],
+    ["","AND","AND", ""],
+    ["AND","AND","AND", "AND"],
+]
+
+  const deck = ["OR", "OR", "OR"]
+
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      <Board matrix={board_CI} />
+      <div className="deck" >
+      <Row blocks={deck}/>
+      </ div >
     </div>
   );
 }
