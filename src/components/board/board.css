@@ -1,8 +1,0 @@
-.board {
-    border-color: black;
-    border: 3px;
-    margin-top: 60px;
-
-    display:flex;
-    flex-direction: column;
-}
