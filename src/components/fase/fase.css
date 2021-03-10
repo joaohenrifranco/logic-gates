@@ -1,0 +1,20 @@
+circle.dragging { 
+    filter: url(#shadow) 
+  }
+  rect { 
+    fill: none; 
+    stroke: magenta; 
+    stroke-width: 2; 
+  }
+  rect.dropTarget { 
+    stroke-width: 4; 
+  }
+  line{ 
+    stroke:black; 
+    stroke-width:4
+  }
+  polyline{ 
+    fill:none; 
+    stroke:black; 
+    stroke-width:4
+  }
