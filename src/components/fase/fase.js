@@ -17,6 +17,7 @@ function Fase(props) {
       define={define}
       targets={["main"]}
       redefine={{
+        width: 954,
         data3: gates,
         mapa: map,
         solution: solve,
