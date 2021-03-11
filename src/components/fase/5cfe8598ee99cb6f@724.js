@@ -109,9 +109,9 @@ Object.assign({
  
   
   const gates = svg.selectAll("g")
-    .data(data3)
+    .data(mapa.gates)
     .enter().append("g")
-      .attr("transform", (d,i) => `translate(${(width / data3.length)*i},500)`)
+      .attr("transform", (d,i) => `translate(${(width / mapa.gates.length)*i},500)`)
       .attr("func",d=>assets2[d].func)
       .call(drag);
   
@@ -233,7 +233,7 @@ Object.assign({
         i++;
     })
     
-    return solution(allFunc);
+    return mapa.solution(allFunc);
   }
   
   function updateLamp(){

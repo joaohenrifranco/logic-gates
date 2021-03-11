@@ -33,26 +33,23 @@ function Game() {
       //[[0,3],[1,3,1]]
     ],
     lamp: [1, 3], //posição da lâmpada
+    solution: (allFunc) => {
+      if (!allFunc) {
+        return false;
+      }
+      const { f1, f2, f3, f4 } = allFunc;
+  
+      if (f1 && f2 && f3 && f4) {
+        return () => !!f3(f4(1,1),f2(f1(1,1),1))
+      }
+    },
+    gates: ["AND1", "AND1", "OR0", "AND"],
   };
-
-  const gates = ["AND1", "AND1", "OR0", "AND"];
-
-  function solution(allFunc) {
-    if (!allFunc) {
-      return false;
-    }
-    const { f1, f2, f3, f4 } = allFunc;
-
-    if (f1 && f2 && f3 && f4) {
-      console.log(!!f4(f3(f2(f1(1, 1), 1), 1), 1)); //funçã meramente ilustrativa
-      return !!f4(f3(f2(f1(1, 1), 1), 1), 1);
-    }
-  }
 
   return (
     <Container>
       <FaseWrapper>
-        <Fase gates={gates} map={mapa} solution={solution} />
+        <Fase map={mapa} />
       </FaseWrapper>
     </Container>
   );

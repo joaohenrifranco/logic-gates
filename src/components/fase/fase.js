@@ -6,21 +6,15 @@ import Notebook from "@alex.garcia/observable-notebook-react";
 const NotebookComponent = Notebook(React);
 
 function Fase(props) {
-  const { gates, map, solution } = props;
+  const { map } = props;
 
-  function solve() {
-    //essa leve gambiarra é para tipar solution como f()
-    return solution;
-  }
   return (
     <NotebookComponent
       define={define}
       targets={["main"]}
       redefine={{
         width: 954,
-        data3: gates,
         mapa: map,
-        solution: solve,
       }}
     />
   );
