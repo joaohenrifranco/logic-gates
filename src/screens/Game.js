@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import styled from "styled-components";
-import Fase from "../components/fase/Fase";
+import Fase from "../fase/Fase";
 import { maps } from "./maps.js";
 
 function Game() {
