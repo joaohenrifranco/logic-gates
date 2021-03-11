@@ -1,403 +1,311 @@
-/* eslint-disable */
 export default function define(runtime, observer) {
   const main = runtime.module();
-  main.variable(observer()).define(["md"], function (md) {
-    return md`
-# Circuit`;
-  });
-  main.variable(observer()).define(["md"], function (md) {
-    return md`
-A ideia é que _main_ seja uma fase, onde para gerá-la deve-se passar um<br>
-mapa com as peças para encaixar e uma função de solução.<p>
-Essa função de solução é avaliada dinamicamente com o correspondente<br>
-da posição-n no mapa, i.e.
 
-~~~js
-f0 = mapa.positions[0];
-~~~
+  main.variable(observer("mapa")).define("mapa", function(){return(
+Object.assign({
+  "rows":2,
+  "columns":9,
+  "postions":[[0,0],[0,1],[0,2],[0,3],[1,0]],
+  "connections":[
+    [[0,0],[0,1,1]], //a conexão é entre duas posições, sendo [saida]para[entrada],
+    [[0,1],[0,2,1]], //[entrada] tem um terceiro indice para a porta: 0->em cima, 1->abaixo
+    [[0,2],[0,3,0]],
+    [[1,0],[0,3,1]],
+    //[[-1,0],[0,0,1]]
+  ],
+  "default":[
+    [0,0,1,0],
+    [1,0,0,0],
+    [0,2,"x","x"],
+    [0,1,1,'x']
+  ],
+  "lamp":[1,3]
+  
+})
+)});
 
-a medida que o jogador posiciona as peças.`;
-  });
-  main.variable(observer()).define(["md"], function (md) {
-    return md`
-## ::[Figma com ícones](https://www.figma.com/file/F3f1nGA58MQn45EhT1kf5E/Untitled?node-id=0%3A1)`;
-  });
-  main.variable(observer("mapa")).define("mapa", function () {
-    return Object.assign({
-      rows: 2,
-      columns: 4,
-      postions: [
-        [0, 0],
-        [0, 1],
-        [0, 2],
-        [0, 3],
-        [1, 0],
-      ],
-      connections: [
-        [
-          [0, 0],
-          [0, 1, 1],
-        ], //a conexão é entre duas posições, sendo [saida]para[entrada],
-        [
-          [0, 1],
-          [0, 2, 1],
-        ], //[entrada] tem um terceiro indice para a porta: 0->em cima, 1->abaixo
-        [
-          [0, 2],
-          [0, 3, 0],
-        ],
-        [
-          [1, 0],
-          [0, 3, 1],
-        ],
-        //[[0,3],[1,3,1]]
-      ],
-      lamp: [1, 3],
-    });
-  });
-
-  main.variable(observer("data2")).define("data2", function () {
-    return () => {};
-  });
-  main
-    .variable(observer("assets2"))
-    .define(
-      "assets2",
-      ["AND", "AND0", "AND1", "OR", "OR0", "OR1"],
-      function (AND, AND0, AND1, OR, OR0, OR1) {
-        return Object.assign({
-          AND: { image: AND, func: "(a,b)=>(a&b)" },
-          AND0: { image: AND0, func: "(a,b)=>(0&b)" },
-          AND1: { image: AND1, func: "(a,b)=>(1&b)" },
-          OR: { image: OR, func: "(a,b)=>(a|b)" },
-          OR0: { image: OR0, func: "(a,b)=>(0|b)" },
-          OR1: { image: OR1, func: "(a,b)=>(1|b)" },
+  main.variable(observer("assets2")).define("assets2", ["AND","AND0","AND1","OR","OR0","OR1"], function(AND,AND0,AND1,OR,OR0,OR1){return(
+Object.assign({
+  "AND":{'image':AND, "func":'(a,b)=>(a&b)'},
+  "AND0":{'image':AND0,"func":'(a,b)=>(0&b)'},
+  "AND1":{'image':AND1,"func":'(a,b)=>(1&b)'},
+  "OR": {'image':OR,"func":'(a,b)=>(a|b)'},
+  "OR0":{'image':OR0,"func":'(a,b)=>(0|b)'},
+  "OR1":{'image':OR1,"func":'(a,b)=>(1|b)'},
+})
+)});
+  main.variable(observer("data3")).define("data3", function(){return(
+['AND1','AND','OR0','AND',"OR1"]
+)});
+  main.variable(observer("brickSize")).define("brickSize", ["width","mapa"], function(width,mapa){return(
+(width/(mapa.columns+1))*0.7
+)});
+  main.variable(observer("main")).define("main", ["width","mapa","d3","data3","assets2","lampON","lampOff","contains"], function(width,mapa,d3,data3,assets2,lampON,lampOff,contains)
+{
+  let proporcao = 0.7
+  let rectSize = 150*(width/(mapa.columns+1))/190.8 * proporcao
+  let height = (mapa.rows+2)*180*proporcao;
+  let espaco = 55*rectSize/150 * proporcao;
+  
+  let connectionColor = ()=>{
+    let colors = ["#4C5270","#F8D210","#2FF3E0"]
+    let i = d3.randomInt(0,3)()
+    return colors[i]
+  }
+  
+  const svg = d3.create("svg")
+    .attr("viewBox", [0, 0, width, height]);
+  
+  const drag = d3.drag()
+    .on("start", startDragging)
+    .on("drag", dragCircle)
+    .on("end", endDragging);
+  
+  const rects = svg.selectAll("rect")
+    .data(mapa.postions)
+    .enter().append("rect")
+      .attr("x", (d,i) => (width / mapa.columns)*d[1]+espaco)
+      .attr("y", (d,i) => (height / mapa.rows)*d[0]+espaco)
+      .attr("width", rectSize)
+      .attr("height", rectSize)
+      .attr("func","")
+      .attr("rx", 6);
+ 
+  
+  const connections = svg.selectAll("polyline.connection")
+    .data(mapa.connections)
+      .enter().append("polyline")
+        .attr("class","connection")
+        .attr("style",d=>`stroke:`+connectionColor())
+        .attr("points",function(d){
+          let x1 = (width / mapa.columns)*d[0][1]+espaco+rectSize;
+          let y1 = (height / mapa.rows)*d[0][0]+espaco+rectSize/2;
+          let x2 = (width / mapa.columns)*d[1][1]+espaco
+          let y2 = (height / mapa.rows)*d[1][0]+espaco+rectSize/3*(d[1][2]+1)
+          let extray = d[0][0]==d[1][0]?0:rectSize/2;
+ 
+             return ` ${x1},${y1} 
+                      ${x1+25},${y1} 
+                      ${x1+25},${y2+extray} 
+                      ${x2-20},${y2+extray} 
+                      ${x2-20},${y2} 
+                      ${x2},${y2}`
         });
-      }
-    );
-  main.variable(observer("data3")).define("data3", function () {
-    return ["AND1", "AND1", "OR0", "AND"];
-  });
-  main
-    .variable(observer("main"))
-    .define(
-      "main",
-      [
-        "d3",
-        "width",
-        "height",
-        "mapa",
-        "rectSize",
-        "data3",
-        "assets2",
-        "lampON",
-        "lampOff",
-        "contains",
-        "solution",
-      ],
-      function (
-        d3,
-        width,
-        height,
-        mapa,
-        rectSize,
-        data3,
-        assets2,
-        lampON,
-        lampOff,
-        contains,
-        solution
-      ) {
-        const svg = d3.create("svg").attr("viewBox", [0, 0, width, (height * 3) / 2]);
-
-        const drag = d3
-          .drag()
-          .on("start", startDragging)
-          .on("drag", dragCircle)
-          .on("end", endDragging);
-
-        const rects = svg
-          .selectAll("rect")
-          .data(mapa.postions)
-          .enter()
-          .append("rect")
-          .attr("x", (d, i) => (width / mapa.columns) * d[1] + 55)
-          .attr("y", (d, i) => (height / mapa.rows) * d[0] + 55)
-          .attr("width", rectSize)
-          .attr("height", rectSize)
-          .attr("func", "")
-          .attr("rx", 6);
-
-        const connections = svg
-          .selectAll("polyline")
-          .data(mapa.connections)
-          .enter()
-          .append("polyline")
-          .attr("points", function (d) {
-            let x1 = (width / mapa.columns) * d[0][1] + 55 + rectSize;
-            let y1 = (height / mapa.rows) * d[0][0] + 55 + rectSize / 2;
-            let x2 = (width / mapa.columns) * d[1][1] + 55;
-            let y2 = (height / mapa.rows) * d[1][0] + 55 + (rectSize / 3) * (d[1][2] + 1);
-            let extray = d[0][0] == d[1][0] ? 0 : rectSize / 2;
-
-            return ` ${x1},${y1} 
-                      ${x1 + 25},${y1} 
-                      ${x1 + 25},${y2 + extray} 
-                      ${x2 - 20},${y2 + extray} 
-                      ${x2 - 20},${y2} 
-                      ${x2},${y2}`;
-          });
-
-        const gates = svg
-          .selectAll("g")
-          .data(mapa.gates)
-          .enter()
-          .append("g")
-          .attr("transform", (d, i) => `translate(${(width / mapa.gates.length) * i},500)`)
-          .attr("func", (d) => assets2[d].func)
-          .call(drag);
-
-        const label = gates.append("g");
-
-        const fo = label
-          .selectAll(".legend-fo")
-          .data((d) => [d])
-          .join("foreignObject")
-          .classed("legend-fo", true)
-          .attr("width", 234)
-          .attr("height", 300);
-
-        const subdiv = fo
-          .selectAll(".legend-div")
-          .data((d) => [d])
-          .join("xhtml:div")
-          .classed("legend-div", true)
-          .html((d) => {
-            return `<center><div style="font-size:20px;margin-top:0px;">
-	             	<div style="border-radius:10px;
-                  width:50px;
-                  height:50px;
-                  display:inline-block">
-                </div> 
+  
+  let chooseColor=(n)=>{
+    if(n==1){ return "red"}
+    else if(n==0){ return "blue"}
+    else{return "transparent"}
+  }
+  const defaultCon = svg.selectAll("line");
+    defaultCon.data(mapa.default)
+      .enter().append("line") //[[0,0,1,0],[1,0,0,0]],
+        .style("stroke",(d)=>chooseColor(d[2]))
+        .attr("x1", (d,i) => (width / mapa.columns)*d[1])
+        .attr("y1", (d,i) => (height / mapa.rows)*d[0]+espaco+rectSize/3)
+        .attr("x2", (d,i) => (width / mapa.columns)*d[1]+espaco)
+        .attr("y2", (d,i) => (height / mapa.rows)*d[0]+espaco+rectSize/3);
+  
+  defaultCon.data(mapa.default)
+      .enter().append("line") //[[0,0,1,0],[1,0,0,0]],
+        .style("stroke",(d)=>chooseColor(d[3]))
+        .attr("x1", (d,i) => (width / mapa.columns)*d[1])
+        .attr("y1", (d,i) => (height / mapa.rows)*d[0]+espaco+rectSize*2/3)
+        .attr("x2", (d,i) => (width / mapa.columns)*d[1]+espaco)
+        .attr("y2", (d,i) => (height / mapa.rows)*d[0]+espaco+rectSize*2/3);
+ 
+  
+  const gates = svg.selectAll("g")
+    .data(mapa.gates)
+    .enter().append("g")
+      .attr("transform", (d,i) => `translate(
+          ${(width / mapa.columns)*(i%mapa.columns)},
+          ${height-2*rectSize-1.2*rectSize*Math.floor(i/mapa.columns)})`)
+      .attr("func",d=>assets2[d].func)
+      .call(drag);
+  
+  const label = gates.append("g");
+  
+  const fo = label.selectAll('.legend-fo')
+            .data(d=>[d])
+            .join('foreignObject')
+              .classed('legend-fo', true)
+              .attr('width',234*proporcao)
+              .attr('height',237*proporcao);
+  
+  const subdiv = fo.selectAll('.legend-div')
+            .data(d=>[d])
+            .join('xhtml:div')
+            .classed('legend-div', true)
+            //.attr("transform",(d)=> `translate(${-rectSize},${rectSize}`)
+            .html(
+              d=>{
+               return`<div style="margin-top:0px;">
                 ${assets2[d].image}
-							</div></center>`;
-          })
-          .join("");
+							</div>`
+              }).join('');
+  
+  let x = (width / mapa.columns)*mapa.lamp[1]
+  let y = (height / mapa.rows)*mapa.lamp[0]
+  const lamp = svg.append("g")
+      .attr("transform", d=>`translate(${x},${y})`)
 
-        let x = (width / mapa.columns) * mapa.lamp[1];
-        let y = (height / mapa.rows) * mapa.lamp[0];
-        const lamp = svg.append("g").attr("transform", (d) => `translate(${x},${y})`);
+  const label2 = lamp.append("g");
+  
+  const fo2 = label2.selectAll('.legend-fo')
+            .data([1])
+            .join('foreignObject')
+              .classed('legend-fo', true)
+              .attr('width',234*proporcao)
+              .attr('height',234*proporcao);
+  
+  let subdiv2 = fo2.selectAll('.legend-div')
+            .data(d=>[1])
+            .join('xhtml:div')
+            .classed('legend-div', true)
+            .html(
+              d=>{
+               return`<div>
+                ${evaluateLamp()?lampON:lampOff}
+							</div>`  
+              }).join('');
+  
+  
+  //////////////
+  //dragFunctions
+  ////////
+  
+  function updateRect(target,isDropTarget,func=false) {
+    target.classed("dropTarget", isDropTarget);
+    if(isDropTarget & !!func){
+      target.attr("func",func)
+    };
+  };
+  
+  function dragCircle(event) {
+    const [x, y] = d3.pointer(event, svg.node());
+    let gate = d3.select(this)
+      .attr("transform", `translate(${x-rectSize/2},${y-rectSize/2})`);
+    rects
+      .each(
+      function(d) { 
+        let atual = d3.select(this);
+        updateRect(
+          atual,
+          overDragTarget(atual,x, y),
+        );
+      });
+  };
+  
+  function overDragTarget(target,x, y) {
+    let rectBounds = target.node().getBBox();
+    return contains(rectBounds, ({x:x, y:y}));
+  }
+  
+  function startDragging(event) {
+    const isDragging = true;
+    d3.select(this)
+      .classed("dragging", isDragging)
+      .raise(); // SVG elements don't have a z-index so bring the circle to the top
+    
+    const [x, y] = d3.pointer(event, svg.node());
+    rects
+      .each(
+      function(d) { 
+        let atual = d3.select(this);
+        updateRect(
+          atual,
+          overDragTarget(atual,x, y),
+          'undefined'
+        );
+      });
+  
+    evaluateLamp();
+    updateLamp();
+  }
+  
+  function evaluateLamp() {
+    let i = 0;
+    let allFunc = Object.assign({});
+    rects.each(function (d) {
+      let atual = d3.select(this);
+      allFunc[`f${i}`] = eval(atual.attr("func"));
+      i++;
+    });
 
-        const label2 = lamp.append("g");
+    if (mapa.solution(allFunc)) {
+      mapa.onComplete();
+      return true;
+    }
 
-        const fo2 = label2
-          .selectAll(".legend-fo")
-          .data([1])
-          .join("foreignObject")
-          .classed("legend-fo", true)
-          .attr("width", 234)
-          .attr("height", 300);
-
-        let subdiv2 = fo2
-          .selectAll(".legend-div")
-          .data((d) => [1])
-          .join("xhtml:div")
-          .classed("legend-div", true)
-          .html((d) => {
-            return `<center><div style="font-size:20px;margin-top:0px;">
-	             	<div style="border-radius:10px;
-                  width:50px;
-                  height:50px;
-                  display:inline-block">
-                </div> 
-                ${evaluateLamp() ? lampON : lampOff}
-							</div></center>`;
-          })
-          .join("");
-
-        //////////////
-        //dragFunctions
-        ////////
-
-        function updateRect(target, isDropTarget, func = false) {
-          target.classed("dropTarget", isDropTarget);
-          if (isDropTarget & !!func) {
-            target.attr("func", func);
-          }
-        }
-
-        function dragCircle(event) {
-          const [x, y] = d3.pointer(event, svg.node());
-          let gate = d3.select(this).attr("transform", `translate(${x - 150},${y - 150})`);
-          rects.each(function (d) {
-            let atual = d3.select(this);
-            updateRect(atual, overDragTarget(atual, x, y));
-          });
-        }
-
-        function overDragTarget(target, x, y) {
-          let rectBounds = target.node().getBBox();
-          return contains(rectBounds, { x: x, y: y });
-        }
-
-        function startDragging(event) {
-          const isDragging = true;
-          d3.select(this).classed("dragging", isDragging).raise(); // SVG elements don't have a z-index so bring the circle to the top
-
-          const [x, y] = d3.pointer(event, svg.node());
-          rects.each(function (d) {
-            let atual = d3.select(this);
-            updateRect(atual, overDragTarget(atual, x, y), "undefined");
-          });
-
-          evaluateLamp();
-          updateLamp();
-        }
-
-        function evaluateLamp() {
-          let i = 0;
-          let allFunc = Object.assign({});
-          rects.each(function (d) {
-            let atual = d3.select(this);
-            allFunc[`f${i}`] = eval(atual.attr("func"));
-            i++;
-          });
-
-          if (mapa.solution(allFunc)) {
-            mapa.onComplete();
-            return true;
-          }
-
-          return false;
-        }
-
-        function updateLamp() {
-          subdiv2
-            .html((d) => {
-              return `<center><div style="font-size:20px;margin-top:0px;">
-	             	<div style="border-radius:10px;
-                  width:50px;
-                  height:50px;
-                  display:inline-block">
-                </div> 
-                ${evaluateLamp() ? lampON : lampOff}
-							</div></center>`;
-            })
-            .join("");
-        }
-
-        function endDragging(event) {
-          //updateRect(rect,true,'(a,b)=>(a|b)');
-          const isDragging = false;
-          const circle = d3.select(this).classed("dragging", isDragging);
-
-          const [x, y] = d3.pointer(event, svg.node());
-          let gate = d3.select(this);
-          rects.each(function (d) {
-            //console.log(d3.select(this))
-            let atual = d3.select(this);
-            overDragTarget(atual, x, y) &&
-              gate.attr(
-                "transform",
+    return false;
+  }
+  
+  function updateLamp(){
+    subdiv2.html(
+              d=>{
+               return`
+	             	<div>
+                ${evaluateLamp()?lampON:lampOff}
+							</div>`  
+              }).join('');
+  }
+  
+  function endDragging(event) {
+    const isDragging = false
+    const circle = d3.select(this)
+      .classed("dragging", isDragging);
+    
+    const [x, y] = d3.pointer(event, svg.node());
+    let gate = d3.select(this);
+    rects
+      .each(
+      function(d) { 
+        //console.log(d3.select(this))
+        let atual = d3.select(this);
+        overDragTarget(atual,x, y)&&
+          gate
+          .attr("transform", 
                 `translate(
-                  ${atual.attr("x") - 55},
-                  ${atual.attr("y") - 97}
-                )`
-              );
-            //gate.attr('x',atual.attr('x'));
-            //gate.attr('y',atual.attr('y'));
-            updateRect(atual, overDragTarget(atual, x, y), gate.attr("func"));
-          });
-
-          evaluateLamp();
-          updateLamp();
-        }
-
-        return svg.node();
-      }
-    );
-  main
-    .variable(observer("assets"))
-    .define(
-      "assets",
-      ["AND", "AND0", "AND1", "OR", "OR0", "OR1"],
-      function (AND, AND0, AND1, OR, OR0, OR1) {
-        return Object.assign({
-          AND: AND,
-          AND0: AND0,
-          AND1: AND1,
-          OR: OR,
-          OR0: OR0,
-          OR1: OR1,
-        });
-      }
-    );
-  main.variable(observer("contains")).define("contains", function () {
-    return function contains(rect, point) {
-      return (
-        point.x >= rect.x &&
-        point.y >= rect.y &&
-        point.x <= rect.x + rect.width &&
-        point.y <= rect.y + rect.height
-      );
-    };
-  });
-  main.variable(observer("X")).define("X", ["width"], function (width) {
-    return width / 3;
-  });
-  main.variable(observer("Y")).define("Y", ["height"], function (height) {
-    return height / 2;
-  });
-  main.variable(observer("r")).define("r", function () {
-    return 50;
-  });
-  main.variable(observer("style")).define("style", ["html"], function (html) {
-    return html`<style>
-      circle.dragging {
-        filter: url(#shadow);
-      }
-      rect {
-        fill: none;
-        stroke: magenta;
-        stroke-width: 2;
-      }
-      rect.dropTarget {
-        stroke-width: 4;
-      }
-      line {
-        stroke: black;
-        stroke-width: 4;
-      }
-      polyline {
-        fill: none;
-        stroke: black;
-        stroke-width: 4;
-      }
-    </style>`;
-  });
-  main.variable(observer()).define(["width"], function (width) {
-    return width;
-  });
-  main.variable(observer("solution")).define("solution", function () {
-    return function solution(allFunc) {
-      let f0 = allFunc.f0;
-      let f1 = allFunc.f1;
-      let f2 = allFunc.f2;
-      let f3 = allFunc.f3;
-      let f4 = allFunc.f4;
-      if (f1 && f2 && f3 && f4) {
-        console.log(!!f4(f3(f2(f1(1, 1), 1), 1), 1)); //funçã meramente ilustrativa
-        return !!f4(f3(f2(f1(1, 1), 1), 1), 1);
-      }
-    };
-  });
-  main.variable(observer("height")).define("height", function () {
-    return 500;
-  });
-  main.variable(observer("AND1")).define("AND1", ["width"], function (width) {
-    return `<svg width="${
-      width / 5
-    }" height="${width / 5}" viewBox="0 0 234 237" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  ${atual.attr('x')-espaco},
+                  ${atual.attr('y')-espaco}
+                )`);
+        
+        updateRect(
+          atual,
+          overDragTarget(atual,x, y),
+          gate.attr("func")
+        );
+      });
+  
+    evaluateLamp();
+    updateLamp();
+  }
+  
+  return svg.node();
+}
+);
+  main.variable(observer("style")).define("style", ["html"], function(html){return(
+html`<style>
+  circle.dragging { filter: url(#shadow) }
+  rect { fill: none; stroke: magenta; stroke-width: 2; }
+  rect.dropTarget { stroke-width: 3; }
+  line{ stroke:black; stroke-width:3}
+  polyline.connection{ fill:none; stroke-width:3}
+</style>`
+)});
+  main.variable(observer("contains")).define("contains", function(){return(
+function contains(rect, point) {
+  return (
+    point.x >= rect.x &&
+    point.y >= rect.y &&
+    point.x <= rect.x + rect.width &&
+    point.y <= rect.y + rect.height
+  );
+}
+)});
+  main.variable(observer("AND1")).define("AND1", ["brickSize"], function(brickSize){return(
+`<svg width="${brickSize}" height="${brickSize}" viewBox="0 0 234 237" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M223.931 145.104V123.896C227.831 123.885 230.989 120.727 231 116.828V95.6205C230.989 91.7211 227.831 88.5628 223.931 88.5516V67.3449C227.831 67.3333 230.989 64.1754 231 60.276V39.0689C230.989 35.1695 227.831 32.0112 223.931 32H192.121C188.221 32.0112 185.063 35.1695 185.052 39.0689H163.845C163.833 35.1695 160.675 32.0112 156.776 32H33.0689C29.1695 32.0112 26.0112 35.1695 26 39.0689V60.276C26.0116 64.1754 29.1695 67.3337 33.0689 67.3449V88.552C29.1695 88.5632 26.0112 91.7215 26 95.6209V116.828C26.0116 120.727 29.1695 123.886 33.0689 123.897V145.104C29.1695 145.115 26.0112 148.273 26 152.172V173.38C26.0116 177.279 29.1695 180.437 33.0689 180.448V201.656C29.1695 201.667 26.0112 204.825 26 208.724V229.931C26.0116 233.831 29.1695 236.989 33.0689 237H64.8791C68.7785 236.988 71.9368 233.831 71.948 229.931H93.1551C93.1667 233.831 96.3246 236.989 100.224 237H223.931C227.831 236.988 230.989 233.831 231 229.931V208.724C230.989 204.825 227.831 201.666 223.931 201.655V180.448C227.831 180.436 230.989 177.279 231 173.379V152.172C230.989 148.273 227.831 145.115 223.931 145.104Z" fill="#FCCC88"/>
 <path d="M33.0689 32H156.776C160.68 32 163.845 35.1647 163.845 39.0689V60.276C163.845 64.1802 160.68 67.3449 156.776 67.3449H33.0689C29.1647 67.3449 26 64.1798 26 60.276V39.0689C26 35.1647 29.1647 32 33.0689 32Z" fill="#CD4F38"/>
 <path d="M192.121 32H223.931C227.835 32 231 35.1647 231 39.0689V60.276C231 64.1802 227.835 67.3449 223.931 67.3449H192.121C188.217 67.3449 185.052 64.1802 185.052 60.276V39.0689C185.052 35.1647 188.217 32 192.121 32Z" fill="#DC6C33"/>
@@ -440,12 +348,10 @@ a medida que o jogador posiciona as peças.`;
 </filter>
 </defs>
 </svg>
- `;
-  });
-  main.variable(observer("AND0")).define("AND0", ["width"], function (width) {
-    return `<svg width="${
-      width / 5
-    }" height="${width / 5}" viewBox="0 0 234 237" fill="none" xmlns="http://www.w3.org/2000/svg">
+ `
+)});
+  main.variable(observer("AND0")).define("AND0", ["brickSize"], function(brickSize){return(
+`<svg width="${brickSize}" height="${brickSize}" viewBox="0 0 234 237" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M223.931 145.104V123.896C227.831 123.885 230.989 120.727 231 116.828V95.6205C230.989 91.7211 227.831 88.5628 223.931 88.5516V67.3449C227.831 67.3333 230.989 64.1754 231 60.276V39.0689C230.989 35.1695 227.831 32.0112 223.931 32H192.121C188.221 32.0112 185.063 35.1695 185.052 39.0689H163.845C163.833 35.1695 160.675 32.0112 156.776 32H33.0689C29.1695 32.0112 26.0112 35.1695 26 39.0689V60.276C26.0116 64.1754 29.1695 67.3337 33.0689 67.3449V88.552C29.1695 88.5632 26.0112 91.7215 26 95.6209V116.828C26.0116 120.727 29.1695 123.886 33.0689 123.897V145.104C29.1695 145.115 26.0112 148.273 26 152.172V173.38C26.0116 177.279 29.1695 180.437 33.0689 180.448V201.656C29.1695 201.667 26.0112 204.825 26 208.724V229.931C26.0116 233.831 29.1695 236.989 33.0689 237H64.8791C68.7785 236.988 71.9368 233.831 71.948 229.931H93.1551C93.1667 233.831 96.3246 236.989 100.224 237H223.931C227.831 236.988 230.989 233.831 231 229.931V208.724C230.989 204.825 227.831 201.666 223.931 201.655V180.448C227.831 180.436 230.989 177.279 231 173.379V152.172C230.989 148.273 227.831 145.115 223.931 145.104Z" fill="#FCCC88"/>
 <path d="M33.0689 32H156.776C160.68 32 163.845 35.1647 163.845 39.0689V60.276C163.845 64.1802 160.68 67.3449 156.776 67.3449H33.0689C29.1647 67.3449 26 64.1798 26 60.276V39.0689C26 35.1647 29.1647 32 33.0689 32Z" fill="#CD4F38"/>
 <path d="M192.121 32H223.931C227.835 32 231 35.1647 231 39.0689V60.276C231 64.1802 227.835 67.3449 223.931 67.3449H192.121C188.217 67.3449 185.052 64.1802 185.052 60.276V39.0689C185.051 35.1647 188.217 32 192.121 32Z" fill="#DC6C33"/>
@@ -488,13 +394,11 @@ a medida que o jogador posiciona as peças.`;
 </filter>
 </defs>
 </svg>
-`;
-  });
-  main.variable(observer("AND")).define("AND", ["width"], function (width) {
-    return `
-<svg width="${
-      width / 5
-    }" height="${width / 5}" viewBox="0 0 234 237" fill="none" xmlns="http://www.w3.org/2000/svg">
+`
+)});
+  main.variable(observer("AND")).define("AND", ["brickSize"], function(brickSize){return(
+`
+<svg width="${brickSize}" height="${brickSize}" viewBox="0 0 234 237" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M223.931 145.104V123.896C227.831 123.885 230.989 120.727 231 116.828V95.6205C230.989 91.7211 227.831 88.5628 223.931 88.5516V67.3449C227.831 67.3333 230.989 64.1754 231 60.276V39.0689C230.989 35.1695 227.831 32.0112 223.931 32H192.121C188.221 32.0112 185.063 35.1695 185.052 39.0689H163.845C163.833 35.1695 160.675 32.0112 156.776 32H33.0689C29.1695 32.0112 26.0112 35.1695 26 39.0689V60.276C26.0116 64.1754 29.1695 67.3337 33.0689 67.3449V88.552C29.1695 88.5632 26.0112 91.7215 26 95.6209V116.828C26.0116 120.727 29.1695 123.886 33.0689 123.897V145.104C29.1695 145.115 26.0112 148.273 26 152.172V173.38C26.0116 177.279 29.1695 180.437 33.0689 180.448V201.656C29.1695 201.667 26.0112 204.825 26 208.724V229.931C26.0116 233.831 29.1695 236.989 33.0689 237H64.8791C68.7785 236.988 71.9368 233.831 71.948 229.931H93.1551C93.1667 233.831 96.3246 236.989 100.224 237H223.931C227.831 236.988 230.989 233.831 231 229.931V208.724C230.989 204.825 227.831 201.666 223.931 201.655V180.448C227.831 180.436 230.989 177.279 231 173.379V152.172C230.989 148.273 227.831 145.115 223.931 145.104Z" fill="#FCCC88"/>
 <path d="M33.0689 32H156.776C160.68 32 163.845 35.1647 163.845 39.0689V60.276C163.845 64.1802 160.68 67.3449 156.776 67.3449H33.0689C29.1647 67.3449 26 64.1798 26 60.276V39.0689C26 35.1647 29.1647 32 33.0689 32Z" fill="#CD4F38"/>
 <path d="M192.121 32H223.931C227.835 32 231 35.1647 231 39.0689V60.276C231 64.1802 227.835 67.3449 223.931 67.3449H192.121C188.217 67.3449 185.052 64.1802 185.052 60.276V39.0689C185.051 35.1647 188.217 32 192.121 32Z" fill="#DC6C33"/>
@@ -536,12 +440,10 @@ a medida que o jogador posiciona as peças.`;
 </filter>
 </defs>
 </svg>
-`;
-  });
-  main.variable(observer("OR1")).define("OR1", ["width"], function (width) {
-    return ` <svg width="${
-      width / 5
-    }" height="${width / 5}" viewBox="0 0 234 237" fill="none" xmlns="http://www.w3.org/2000/svg">
+`
+)});
+  main.variable(observer("OR1")).define("OR1", ["brickSize"], function(brickSize){return(
+` <svg width="${brickSize}" height="${brickSize}" viewBox="0 0 234 237" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M223.931 145.104V123.896C227.831 123.885 230.989 120.727 231 116.828V95.6205C230.989 91.7211 227.831 88.5628 223.931 88.5516V67.3449C227.831 67.3333 230.989 64.1754 231 60.276V39.0689C230.989 35.1695 227.831 32.0112 223.931 32H192.121C188.221 32.0112 185.063 35.1695 185.052 39.0689H163.845C163.833 35.1695 160.675 32.0112 156.776 32H33.0689C29.1695 32.0112 26.0112 35.1695 26 39.0689V60.276C26.0116 64.1754 29.1695 67.3337 33.0689 67.3449V88.552C29.1695 88.5632 26.0112 91.7215 26 95.6209V116.828C26.0116 120.727 29.1695 123.886 33.0689 123.897V145.104C29.1695 145.115 26.0112 148.273 26 152.172V173.38C26.0116 177.279 29.1695 180.437 33.0689 180.448V201.656C29.1695 201.667 26.0112 204.825 26 208.724V229.931C26.0116 233.831 29.1695 236.989 33.0689 237H64.8791C68.7785 236.988 71.9368 233.831 71.948 229.931H93.1551C93.1667 233.831 96.3246 236.989 100.224 237H223.931C227.831 236.988 230.989 233.831 231 229.931V208.724C230.989 204.825 227.831 201.666 223.931 201.655V180.448C227.831 180.436 230.989 177.279 231 173.379V152.172C230.989 148.273 227.831 145.115 223.931 145.104Z" fill="#FCCC88"/>
 <path d="M33.0689 32H156.776C160.68 32 163.845 35.1647 163.845 39.0689V60.276C163.845 64.1802 160.68 67.3449 156.776 67.3449H33.0689C29.1647 67.3449 26 64.1798 26 60.276V39.0689C26 35.1647 29.1647 32 33.0689 32Z" fill="#CD4F38"/>
 <path d="M192.121 32H223.931C227.835 32 231 35.1647 231 39.0689V60.276C231 64.1802 227.835 67.3449 223.931 67.3449H192.121C188.217 67.3449 185.052 64.1802 185.052 60.276V39.0689C185.052 35.1647 188.217 32 192.121 32Z" fill="#DC6C33"/>
@@ -584,12 +486,10 @@ a medida que o jogador posiciona as peças.`;
 </filter>
 </defs>
 </svg>
-`;
-  });
-  main.variable(observer("OR0")).define("OR0", ["width"], function (width) {
-    return `<svg width="${
-      width / 5
-    }" height="${width / 5}" viewBox="0 0 234 237" fill="none" xmlns="http://www.w3.org/2000/svg">
+`
+)});
+  main.variable(observer("OR0")).define("OR0", ["brickSize"], function(brickSize){return(
+`<svg width="${brickSize}" height="${brickSize}" viewBox="0 0 234 237" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M223.931 145.104V123.896C227.831 123.885 230.989 120.727 231 116.828V95.6205C230.989 91.7211 227.831 88.5628 223.931 88.5516V67.3449C227.831 67.3333 230.989 64.1754 231 60.276V39.0689C230.989 35.1695 227.831 32.0112 223.931 32H192.121C188.221 32.0112 185.063 35.1695 185.052 39.0689H163.845C163.833 35.1695 160.675 32.0112 156.776 32H33.0689C29.1695 32.0112 26.0112 35.1695 26 39.0689V60.276C26.0116 64.1754 29.1695 67.3337 33.0689 67.3449V88.552C29.1695 88.5632 26.0112 91.7215 26 95.6209V116.828C26.0116 120.727 29.1695 123.886 33.0689 123.897V145.104C29.1695 145.115 26.0112 148.273 26 152.172V173.38C26.0116 177.279 29.1695 180.437 33.0689 180.448V201.656C29.1695 201.667 26.0112 204.825 26 208.724V229.931C26.0116 233.831 29.1695 236.989 33.0689 237H64.8791C68.7785 236.988 71.9368 233.831 71.948 229.931H93.1551C93.1667 233.831 96.3246 236.989 100.224 237H223.931C227.831 236.988 230.989 233.831 231 229.931V208.724C230.989 204.825 227.831 201.666 223.931 201.655V180.448C227.831 180.436 230.989 177.279 231 173.379V152.172C230.989 148.273 227.831 145.115 223.931 145.104Z" fill="#FCCC88"/>
 <path d="M33.0689 32H156.776C160.68 32 163.845 35.1647 163.845 39.0689V60.276C163.845 64.1802 160.68 67.3449 156.776 67.3449H33.0689C29.1647 67.3449 26 64.1798 26 60.276V39.0689C26 35.1647 29.1647 32 33.0689 32Z" fill="#CD4F38"/>
 <path d="M192.121 32H223.931C227.835 32 231 35.1647 231 39.0689V60.276C231 64.1802 227.835 67.3449 223.931 67.3449H192.121C188.217 67.3449 185.052 64.1802 185.052 60.276V39.0689C185.051 35.1647 188.217 32 192.121 32Z" fill="#DC6C33"/>
@@ -632,12 +532,10 @@ a medida que o jogador posiciona as peças.`;
 </filter>
 </defs>
 </svg>
-`;
-  });
-  main.variable(observer("OR")).define("OR", ["width"], function (width) {
-    return `<svg width="${
-      width / 5
-    }" height="${width / 5}" viewBox="0 0 234 237" fill="none" xmlns="http://www.w3.org/2000/svg">
+`
+)});
+  main.variable(observer("OR")).define("OR", ["brickSize"], function(brickSize){return(
+`<svg width="${brickSize}" height="${brickSize}" viewBox="0 0 234 237" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M223.931 145.104V123.896C227.831 123.885 230.989 120.727 231 116.828V95.6205C230.989 91.7211 227.831 88.5628 223.931 88.5516V67.3449C227.831 67.3333 230.989 64.1754 231 60.276V39.0689C230.989 35.1695 227.831 32.0112 223.931 32H192.121C188.221 32.0112 185.063 35.1695 185.052 39.0689H163.845C163.833 35.1695 160.675 32.0112 156.776 32H33.0689C29.1695 32.0112 26.0112 35.1695 26 39.0689V60.276C26.0116 64.1754 29.1695 67.3337 33.0689 67.3449V88.552C29.1695 88.5632 26.0112 91.7215 26 95.6209V116.828C26.0116 120.727 29.1695 123.886 33.0689 123.897V145.104C29.1695 145.115 26.0112 148.273 26 152.172V173.38C26.0116 177.279 29.1695 180.437 33.0689 180.448V201.656C29.1695 201.667 26.0112 204.825 26 208.724V229.931C26.0116 233.831 29.1695 236.989 33.0689 237H64.8791C68.7785 236.988 71.9368 233.831 71.948 229.931H93.1551C93.1667 233.831 96.3246 236.989 100.224 237H223.931C227.831 236.988 230.989 233.831 231 229.931V208.724C230.989 204.825 227.831 201.666 223.931 201.655V180.448C227.831 180.436 230.989 177.279 231 173.379V152.172C230.989 148.273 227.831 145.115 223.931 145.104Z" fill="#FCCC88"/>
 <path d="M33.0689 32H156.776C160.68 32 163.845 35.1647 163.845 39.0689V60.276C163.845 64.1802 160.68 67.3449 156.776 67.3449H33.0689C29.1647 67.3449 26 64.1798 26 60.276V39.0689C26 35.1647 29.1647 32 33.0689 32Z" fill="#CD4F38"/>
 <path d="M192.121 32H223.931C227.835 32 231 35.1647 231 39.0689V60.276C231 64.1802 227.835 67.3449 223.931 67.3449H192.121C188.217 67.3449 185.052 64.1802 185.052 60.276V39.0689C185.051 35.1647 188.217 32 192.121 32Z" fill="#DC6C33"/>
@@ -679,12 +577,10 @@ a medida que o jogador posiciona as peças.`;
 </filter>
 </defs>
 </svg>
-`;
-  });
-  main.variable(observer("lampON")).define("lampON", ["width"], function (width) {
-    return `<svg width="${
-      width / 5
-    }" height="${width / 5}" viewBox="0 0 317 317" fill="none" xmlns="http://www.w3.org/2000/svg">
+`
+)});
+  main.variable(observer("lampON")).define("lampON", ["brickSize"], function(brickSize){return(
+`<svg width="${brickSize}" height="${brickSize}" viewBox="0 0 317 317" fill="none" xmlns="http://www.w3.org/2000/svg">
 <g clip-path="url(#clip0)">
 <path fill-rule="evenodd" clip-rule="evenodd" d="M159.5 262C186.838 262 209 240.957 209 215C209 211.922 208.688 208.913 208.093 206H110.907C110.312 208.913 110 211.922 110 215C110 240.957 132.162 262 159.5 262Z" fill="#FFC500"/>
 <path d="M243.6 126.8C228 110.4 207.2 98.8 184 94V79.6C184 76.4 182.8 73.2 180.4 71.2C178 69.2 175.2 67.6 172 67.6H165.6L165.2 6C165.2 2.4 162.4 0 159.2 0C155.6 0 153.2 2.8 153.2 6L153.6 67.6H147.2C144 67.6 140.8 68.8 138.8 71.2C136.8 73.6 135.2 76.4 135.2 79.6V93.6C110.8 98.8 89.6 110.4 73.2 126.8C51.2 148.8 38 178.8 38 212.4C38 216 40.8 218.4 44 218.4H108C109.6 230 114.4 240.4 122.4 248.4C131.6 257.6 144.4 263.2 158.4 263.2C172.4 263.2 185.2 257.6 194.4 248.4C202.4 240.4 207.2 230 208.8 218.4H272.8C276.4 218.4 278.8 215.6 278.8 212.4C278.8 179.2 265.2 148.8 243.6 126.8ZM146.8 80H171.6V92C171.2 92 171.2 92 170.8 92C170 92 169.6 92 168.8 92C165.6 91.6 162 91.6 158.8 91.6C155.6 91.2 152.4 91.6 149.2 91.6C148.4 91.6 147.6 91.6 146.8 92V80ZM186 239.6C178.8 246.8 169.2 250.8 158.8 250.8C148 250.8 138.4 246.4 131.6 239.6C126 234 122 226.8 120.8 218.4H158.8H197.2C195.6 226.4 192 234 186 239.6ZM203.6 206H158.8H114H50.4C52 178.4 63.6 153.6 82 135.6C98.8 118.8 120.8 107.6 145.6 104.8C146.4 104.8 147.6 104.4 148.4 104.4C151.6 104 155.2 104 158.4 104C162 104 165.2 104 168.8 104.4C169.6 104.4 170.8 104.8 171.6 104.8C196.4 107.6 218.4 118.8 235.2 135.6C253.6 154 265.2 178.4 266.8 206H203.6Z" fill="black"/>
@@ -700,25 +596,16 @@ a medida que o jogador posiciona as peças.`;
 </clipPath>
 </defs>
 </svg>
-`;
-  });
-  main.variable(observer("lampOff")).define("lampOff", ["width"], function (width) {
-    return `<svg width="${
-      width / 5
-    }" height="${width / 5}" viewBox="0 0 317 317" fill="none" xmlns="http://www.w3.org/2000/svg">
+`
+)});
+  main.variable(observer("lampOff")).define("lampOff", ["brickSize"], function(brickSize){return(
+`<svg width="${brickSize}" height="${brickSize}" viewBox="0 0 317 317" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M243.6 126.8C228 110.4 207.2 98.8 184 94V79.6C184 76.4 182.8 73.2 180.4 71.2C178 69.2 175.2 67.6 172 67.6H165.6L165.2 6C165.2 2.4 162.4 0 159.2 0C155.6 0 153.2 2.8 153.2 6L153.6 67.6H147.2C144 67.6 140.8 68.8 138.8 71.2C136.8 73.6 135.2 76.4 135.2 79.6V93.6C110.8 98.8 89.6 110.4 73.2 126.8C51.2 148.8 38 178.8 38 212.4C38 216 40.8 218.4 44 218.4H108C109.6 230 114.4 240.4 122.4 248.4C131.6 257.6 144.4 263.2 158.4 263.2C172.4 263.2 185.2 257.6 194.4 248.4C202.4 240.4 207.2 230 208.8 218.4H272.8C276.4 218.4 278.8 215.6 278.8 212.4C278.8 179.2 265.2 148.8 243.6 126.8ZM146.8 80H171.6V92C171.2 92 171.2 92 170.8 92C170 92 169.6 92 168.8 92C165.6 91.6 162 91.6 158.8 91.6C155.6 91.2 152.4 91.6 149.2 91.6C148.4 91.6 147.6 91.6 146.8 92V80ZM186 239.6C178.8 246.8 169.2 250.8 158.8 250.8C148 250.8 138.4 246.4 131.6 239.6C126 234 122 226.8 120.8 218.4H158.8H197.2C195.6 226.4 192 234 186 239.6ZM203.6 206H158.8H114H50.4C52 178.4 63.6 153.6 82 135.6C98.8 118.8 120.8 107.6 145.6 104.8C146.4 104.8 147.6 104.4 148.4 104.4C151.6 104 155.2 104 158.4 104C162 104 165.2 104 168.8 104.4C169.6 104.4 170.8 104.8 171.6 104.8C196.4 107.6 218.4 118.8 235.2 135.6C253.6 154 265.2 178.4 266.8 206H203.6Z" fill="black"/>
 </svg>
- `;
-  });
-  main.variable(observer("rectSize")).define("rectSize", function () {
-    return 150;
-  });
-  main.variable(observer()).define(["md"], function (md) {
-    return md`
-# Imports`;
-  });
-  main.variable(observer("d3")).define("d3", ["require"], function (require) {
-    return require("d3@6");
-  });
+ `
+)});
+  main.variable(observer("d3")).define("d3", ["require"], function(require){return(
+require("d3@6")
+)});
   return main;
 }
