@@ -6,7 +6,7 @@ function StartScreen(props) {
 
   return (
     <Container>
-      <Title>Portas Lógicas</Title>
+      <Title>The Final Light</Title>
       <StartButton onClick={onStart}>Jogar!</StartButton>
     </Container>
   );
