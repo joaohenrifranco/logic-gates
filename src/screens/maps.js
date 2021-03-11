@@ -1,6 +1,6 @@
 export const maps = [
   {
-    rows: 2,
+    rows: 3,
     columns: 4,
     postions: [
       [0, 0],
@@ -30,6 +30,12 @@ export const maps = [
         [0, 3],
         [1, 3, 1],
       ],
+    ],
+    default:[
+      [0,0,1,0],  //[posição x, y, porta de cima, porta de baixo]
+      [1,0,0,0],  // [_,_,1,0] 1:vermelho, 0:azul
+      [0,2,"x","x"], //[_,_,1,'x'] nem 1 nem 0, transparent
+      [0,1,1,'x']
     ],
     lamp: [1, 3], //posição da lâmpada
     solution: (allFunc) => {
@@ -106,6 +112,7 @@ export const maps = [
         [3, 4, 1],
       ],
     ],
+    default:[],
     lamp: [3, 4],
     solution: (allFunc) => {
       if (!allFunc) {
