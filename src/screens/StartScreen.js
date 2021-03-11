@@ -15,12 +15,13 @@ function StartScreen(props) {
 const Title = styled.h1`
   font-size: 3em;
   font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+  color: white;
 `;
 
 const Container = styled.div`
   height: 100vh;
   width: 100%;
-  background-color: cyan;
+  background-image: url(https://wallpaperaccess.com/full/28951.jpg);
   display: flex;
   align-items: center;
   flex-direction: column;
@@ -32,8 +33,8 @@ const StartButton = styled.button`
   height: 10%;
   width: 30%;
   border: none;
-  background-color: red;
-  color: white;
+  background-color: white;
+  color: black;
   font-size: 30px;
   border-radius: 10px;
   :hover {
