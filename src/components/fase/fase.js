@@ -8,15 +8,17 @@ const NotebookComponent = Notebook(React);
 function Fase(props) {
   const { map, onComplete } = props;
 
+  map.onComplete = onComplete;
+
   return (
     <NotebookComponent
+      key={map}
       define={define}
       targets={["main"]}
-      redefine={{
+      redefine={Object.assign({
         width: 954,
         mapa: map,
-        data2: onComplete,
-      }}
+      })}
     />
   );
 }

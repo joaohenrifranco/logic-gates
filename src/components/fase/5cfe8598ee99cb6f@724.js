@@ -215,6 +215,7 @@ Object.assign({
     })
     
     if (mapa.solution(allFunc)) {
+      mapa.onComplete();
       return true;
     };
 

@@ -47,7 +47,7 @@ export const maps = [
   {
     rows: 4,
     columns: 5,
-    positions: [
+    postions: [
       [0, 0],
       [0, 1],
       [0, 2],
