@@ -34,26 +34,7 @@ Object.assign({
 })
 )});
   
-  main.variable(observer("data2")).define("data2", function(){return(
-Object.assign([
-  {
-    'type':'AND1',
-    'func':'(a,b)=>(a&b)'
-  },
-  {
-    'type':'AND1',
-    'func':'(a,b)=>(a&b)'
-  },
-  {
-    'type':'OR',
-    'func':'(a,b)=>(a|0)'
-  },
-  {
-    'type':'OR',
-    'func':'(a,b)=>(a|0)'
-  }
-])
-)});
+  main.variable(observer("data2")).define("data2", function () { return (() => { })});
   main.variable(observer("assets2")).define("assets2", ["AND","AND0","AND1","OR","OR0","OR1"], function(AND,AND0,AND1,OR,OR0,OR1){return(
 Object.assign({
   "AND":{'image':AND, "func":'(a,b)=>(a&b)'},
@@ -233,7 +214,11 @@ Object.assign({
         i++;
     })
     
-    return mapa.solution(allFunc);
+    if (mapa.solution(allFunc)) {
+      return true;
+    };
+
+    return false;
   }
   
   function updateLamp(){

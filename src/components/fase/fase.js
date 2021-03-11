@@ -6,7 +6,7 @@ import Notebook from "@alex.garcia/observable-notebook-react";
 const NotebookComponent = Notebook(React);
 
 function Fase(props) {
-  const { map } = props;
+  const { map, onComplete } = props;
 
   return (
     <NotebookComponent
@@ -15,6 +15,7 @@ function Fase(props) {
       redefine={{
         width: 954,
         mapa: map,
+        data2: onComplete,
       }}
     />
   );
