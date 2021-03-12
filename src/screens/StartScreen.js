@@ -8,6 +8,7 @@ function StartScreen(props) {
     <Container>
       <Title>The Final Light</Title>
       <StartButton onClick={onStart}>Jogar!</StartButton>
+      <StartButton onClick={onStart}>Tutorial!</StartButton>
     </Container>
   );
 }
