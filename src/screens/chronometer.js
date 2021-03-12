@@ -7,8 +7,8 @@ const Counter = (props) => (
 
 const  Chronometer = (props) =>  {
     const { youLose } = props;
-    const [seconds, setSeconds] = useState(10);
-    const [minutes, setMinutes] = useState(0);
+    const [seconds, setSeconds] = useState(0);
+    const [minutes, setMinutes] = useState(2);
 
     const setTime = () => {
         if (seconds === 0 && minutes === 0){
