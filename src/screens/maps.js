@@ -1,7 +1,7 @@
 export const maps = [
   {
     rows: 3,
-    columns: 4,
+    columns: 5,
     postions: [
       [0, 0],
       [0, 1],
@@ -50,8 +50,8 @@ export const maps = [
     gates: ["AND1", "AND1", "OR0", "AND", "OR"],
   },
   {
-    rows: 4,
-    columns: 5,
+    rows: 6,
+    columns: 6,
     postions: [
       [0, 0],
       [0, 1],
@@ -129,6 +129,6 @@ export const maps = [
         return () => !!f5(1,f4(f2(1,f1(f0(1,0),f3(1,1))),f8(1,f7(f6(1,0),f10(1,f9(1,0))))));
       }
     },
-    gates: ["OR0", "AND", "AND"],
+    gates: ["OR0", "AND", "AND","OR0", "AND", "AND","OR0", "AND", "AND","OR0", "AND", "AND"],
   },
 ];
