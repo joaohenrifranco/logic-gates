@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import styled from "styled-components";
 import Fase from "../fase/Fase";
+import Chronometer from "./chronometer"
 import { maps } from "./maps.js";
 
 function Game() {
-  const [level, setLevel] = useState(0);
+  const [level, setLevel] = useState(1);
   const [hasCompleted, setHasCompleted] = useState(false);
   const [hasWon, setHasWon] = useState(false);
 
@@ -25,6 +26,7 @@ function Game() {
     <Container>
       {!hasCompleted && !hasWon && (
         <FaseWrapper>
+          <Chronometer />
           <Fase
             map={maps[level]}
             onComplete={handleComplete}
