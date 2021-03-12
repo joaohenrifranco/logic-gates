@@ -22,7 +22,7 @@ const Title = styled.h1`
 const Container = styled.div`
   height: 100vh;
   width: 100%;
-  background-image: url(https://wallpaperaccess.com/full/28951.jpg);
+  background-image: url(https://miro.medium.com/max/1838/1*gv-zaC64X4RZpz4FpG2jmA.jpeg);
   display: flex;
   align-items: center;
   flex-direction: column;
