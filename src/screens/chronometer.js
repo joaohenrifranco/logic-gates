@@ -1,14 +1,20 @@
 import React, { useState, useEffect } from "react";
 
+function pad(num) {
+  num = num.toString();
+  if (num.length === 1) num = "0" + num;
+  return num;
+}
+
 const Counter = (props) => (
-    <h1 class="my-title">{props.minutes}:{props.seconds}</h1>
+    <h1 class="my-title">{props.minutes}:{pad(props.seconds)}</h1>
 )
 
 
 const  Chronometer = (props) =>  {
     const { youLose } = props;
-    const [seconds, setSeconds] = useState(10);
-    const [minutes, setMinutes] = useState(0);
+    const [seconds, setSeconds] = useState(0);
+    const [minutes, setMinutes] = useState(2);
 
     const setTime = () => {
         if (seconds === 0 && minutes === 0){
