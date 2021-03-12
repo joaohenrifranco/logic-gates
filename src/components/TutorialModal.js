@@ -22,6 +22,9 @@ function Modal(props) {
         conseguir acender a lâmpada.
         <br />
         <br />
+        Lembre-se, as entradas vermelhas tem valor 1 e as entradas azuis tem valor 0.
+        <br />
+        <br />
         Abaixo você terá uma explicação de como cada porta funciona:
         <br />
         <br />
