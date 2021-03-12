@@ -5,7 +5,7 @@ import Chronometer from "./chronometer"
 import { maps } from "./maps.js";
 
 function Game() {
-  const [level, setLevel] = useState(1);
+  const [level, setLevel] = useState(0);
   const [hasCompleted, setHasCompleted] = useState(false);
   const [hasWon, setHasWon] = useState(false);
   const [hasLost, setHasLost] = useState(false);
