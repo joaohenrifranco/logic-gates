@@ -26,7 +26,7 @@ Object.assign({
 })
 )});
 
-  main.variable(observer("assets2")).define("assets2", ["AND","AND0","AND1","OR","OR0","OR1"], function(AND,AND0,AND1,OR,OR0,OR1){return(
+  main.variable(observer("assets2")).define("assets2", ["AND","AND0","AND1","OR","OR0","OR1","XOR","NAN0","NOR0"], function(AND,AND0,AND1,OR,OR0,OR1,XOR,NAND0,NOR0){return(
 Object.assign({
   "AND":{'image':AND, "func":'(a,b)=>(a&b)'},
   "AND0":{'image':AND0,"func":'(a,b)=>(0&b)'},
