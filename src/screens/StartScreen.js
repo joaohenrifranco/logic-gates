@@ -44,8 +44,9 @@ const StartButton = styled.button`
   color: black;
   font-size: 30px;
   border-radius: 10px;
+  border: 2px solid black;
   :hover {
-    color: black;
+    background-color: #AAAAAA;
   }
   :active {
     color: yellow;
