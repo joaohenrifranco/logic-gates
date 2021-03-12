@@ -1,403 +1,316 @@
 /* eslint-disable */
+
 export default function define(runtime, observer) {
   const main = runtime.module();
-  main.variable(observer()).define(["md"], function (md) {
-    return md`
-# Circuit`;
-  });
-  main.variable(observer()).define(["md"], function (md) {
-    return md`
-A ideia é que _main_ seja uma fase, onde para gerá-la deve-se passar um<br>
-mapa com as peças para encaixar e uma função de solução.<p>
-Essa função de solução é avaliada dinamicamente com o correspondente<br>
-da posição-n no mapa, i.e.
 
-~~~js
-f0 = mapa.positions[0];
-~~~
+  main.variable(observer("mapa")).define("mapa", function(){return(
+Object.assign({
+  "rows":2,
+  "columns":9,
+  "postions":[[0,0],[0,1],[0,2],[0,3],[1,0]],
+  "connections":[
+    [[0,0],[0,1,1]], //a conexão é entre duas posições, sendo [saida]para[entrada],
+    [[0,1],[0,2,1]], //[entrada] tem um terceiro indice para a porta: 0->em cima, 1->abaixo
+    [[0,2],[0,3,0]],
+    [[1,0],[0,3,1]],
+    //[[-1,0],[0,0,1]]
+  ],
+  "default":[
+    [0,0,1,0],
+    [1,0,0,0],
+    [0,2,"x","x"],
+    [0,1,1,'x']
+  ],
+  "lamp":[1,3]
+  
+})
+)});
 
-a medida que o jogador posiciona as peças.`;
-  });
-  main.variable(observer()).define(["md"], function (md) {
-    return md`
-## ::[Figma com ícones](https://www.figma.com/file/F3f1nGA58MQn45EhT1kf5E/Untitled?node-id=0%3A1)`;
-  });
-  main.variable(observer("mapa")).define("mapa", function () {
-    return Object.assign({
-      rows: 2,
-      columns: 4,
-      postions: [
-        [0, 0],
-        [0, 1],
-        [0, 2],
-        [0, 3],
-        [1, 0],
-      ],
-      connections: [
-        [
-          [0, 0],
-          [0, 1, 1],
-        ], //a conexão é entre duas posições, sendo [saida]para[entrada],
-        [
-          [0, 1],
-          [0, 2, 1],
-        ], //[entrada] tem um terceiro indice para a porta: 0->em cima, 1->abaixo
-        [
-          [0, 2],
-          [0, 3, 0],
-        ],
-        [
-          [1, 0],
-          [0, 3, 1],
-        ],
-        //[[0,3],[1,3,1]]
-      ],
-      lamp: [1, 3],
-    });
-  });
-
-  main.variable(observer("data2")).define("data2", function () {
-    return () => {};
-  });
-  main
-    .variable(observer("assets2"))
-    .define(
-      "assets2",
-      ["AND", "AND0", "AND1", "OR", "OR0", "OR1"],
-      function (AND, AND0, AND1, OR, OR0, OR1) {
-        return Object.assign({
-          AND: { image: AND, func: "(a,b)=>(a&b)" },
-          AND0: { image: AND0, func: "(a,b)=>(0&b)" },
-          AND1: { image: AND1, func: "(a,b)=>(1&b)" },
-          OR: { image: OR, func: "(a,b)=>(a|b)" },
-          OR0: { image: OR0, func: "(a,b)=>(0|b)" },
-          OR1: { image: OR1, func: "(a,b)=>(1|b)" },
+  main.variable(observer("assets2")).define("assets2", ["AND","AND0","AND1","OR","OR0","OR1","XOR","NAN0","NOR0"], function(AND,AND0,AND1,OR,OR0,OR1,XOR,NAND0,NOR0){return(
+Object.assign({
+  "AND":{'image':AND, "func":'(a,b)=>(a&b)'},
+  "AND0":{'image':AND0,"func":'(a,b)=>(0&b)'},
+  "AND1":{'image':AND1,"func":'(a,b)=>(1&b)'},
+  "OR": {'image':OR,"func":'(a,b)=>(a|b)'},
+  "OR0":{'image':OR0,"func":'(a,b)=>(0|b)'},
+  "OR1":{'image':OR1,"func":'(a,b)=>(1|b)'},
+  "XOR":{'image':XOR,"func":'(a,b)=>(a^b)'},
+  "NOR0":{'image':NOR0,"func":'(a,b)=>!(0|b)'},
+  "NAND0":{'image':NAND0,"func":'(a,b)=>!(0&b)'},
+})
+)});
+  main.variable(observer("data3")).define("data3", function(){return(
+['AND1','AND','OR0','AND',"OR1"]
+)});
+  main.variable(observer("brickSize")).define("brickSize", ["width","mapa"], function(width,mapa){return(
+(width/(mapa.columns+1))*0.7
+)});
+  main.variable(observer("main")).define("main", ["width","mapa","d3","data3","assets2","lampON","lampOff","contains"], function(width,mapa,d3,data3,assets2,lampON,lampOff,contains)
+{
+  let proporcao = 0.7
+  let rectSize = 150*(width/(mapa.columns+1))/190.8 * proporcao
+  let height = (mapa.rows+2)*180*proporcao;
+  let espaco = 55*rectSize/150 * proporcao;
+  
+  let connectionColor = ()=>{
+    let colors = ["#4C5270","#F8D210","#2FF3E0"]
+    let i = d3.randomInt(0,3)()
+    return colors[i]
+  }
+  
+  const svg = d3.create("svg")
+    .attr("viewBox", [0, 0, width, height]);
+  
+  const drag = d3.drag()
+    .on("start", startDragging)
+    .on("drag", dragCircle)
+    .on("end", endDragging);
+  
+  const rects = svg.selectAll("rect")
+    .data(mapa.postions)
+    .enter().append("rect")
+      .attr("x", (d,i) => (width / mapa.columns)*d[1]+espaco)
+      .attr("y", (d,i) => (height / mapa.rows)*d[0]+espaco)
+      .attr("width", rectSize)
+      .attr("height", rectSize)
+      .attr("func","")
+      .attr("rx", 6);
+ 
+  
+  const connections = svg.selectAll("polyline.connection")
+    .data(mapa.connections)
+      .enter().append("polyline")
+        .attr("class","connection")
+        .attr("style",d=>`stroke:`+connectionColor())
+        .attr("points",function(d){
+          let x1 = (width / mapa.columns)*d[0][1]+espaco+rectSize;
+          let y1 = (height / mapa.rows)*d[0][0]+espaco+rectSize/2;
+          let x2 = (width / mapa.columns)*d[1][1]+espaco
+          let y2 = (height / mapa.rows)*d[1][0]+espaco+rectSize/3*(d[1][2]+1)
+          let extray = d[0][0]==d[1][0]?0:rectSize/2;
+ 
+             return ` ${x1},${y1} 
+                      ${x1+25},${y1} 
+                      ${x1+25},${y2+extray} 
+                      ${x2-20},${y2+extray} 
+                      ${x2-20},${y2} 
+                      ${x2},${y2}`
         });
-      }
-    );
-  main.variable(observer("data3")).define("data3", function () {
-    return ["AND1", "AND1", "OR0", "AND"];
-  });
-  main
-    .variable(observer("main"))
-    .define(
-      "main",
-      [
-        "d3",
-        "width",
-        "height",
-        "mapa",
-        "rectSize",
-        "data3",
-        "assets2",
-        "lampON",
-        "lampOff",
-        "contains",
-        "solution",
-      ],
-      function (
-        d3,
-        width,
-        height,
-        mapa,
-        rectSize,
-        data3,
-        assets2,
-        lampON,
-        lampOff,
-        contains,
-        solution
-      ) {
-        const svg = d3.create("svg").attr("viewBox", [0, 0, width, (height * 3) / 2]);
-
-        const drag = d3
-          .drag()
-          .on("start", startDragging)
-          .on("drag", dragCircle)
-          .on("end", endDragging);
-
-        const rects = svg
-          .selectAll("rect")
-          .data(mapa.postions)
-          .enter()
-          .append("rect")
-          .attr("x", (d, i) => (width / mapa.columns) * d[1] + 55)
-          .attr("y", (d, i) => (height / mapa.rows) * d[0] + 55)
-          .attr("width", rectSize)
-          .attr("height", rectSize)
-          .attr("func", "")
-          .attr("rx", 6);
-
-        const connections = svg
-          .selectAll("polyline")
-          .data(mapa.connections)
-          .enter()
-          .append("polyline")
-          .attr("points", function (d) {
-            let x1 = (width / mapa.columns) * d[0][1] + 55 + rectSize;
-            let y1 = (height / mapa.rows) * d[0][0] + 55 + rectSize / 2;
-            let x2 = (width / mapa.columns) * d[1][1] + 55;
-            let y2 = (height / mapa.rows) * d[1][0] + 55 + (rectSize / 3) * (d[1][2] + 1);
-            let extray = d[0][0] == d[1][0] ? 0 : rectSize / 2;
-
-            return ` ${x1},${y1} 
-                      ${x1 + 25},${y1} 
-                      ${x1 + 25},${y2 + extray} 
-                      ${x2 - 20},${y2 + extray} 
-                      ${x2 - 20},${y2} 
-                      ${x2},${y2}`;
-          });
-
-        const gates = svg
-          .selectAll("g")
-          .data(mapa.gates)
-          .enter()
-          .append("g")
-          .attr("transform", (d, i) => `translate(${(width / mapa.gates.length) * i},500)`)
-          .attr("func", (d) => assets2[d].func)
-          .call(drag);
-
-        const label = gates.append("g");
-
-        const fo = label
-          .selectAll(".legend-fo")
-          .data((d) => [d])
-          .join("foreignObject")
-          .classed("legend-fo", true)
-          .attr("width", 234)
-          .attr("height", 300);
-
-        const subdiv = fo
-          .selectAll(".legend-div")
-          .data((d) => [d])
-          .join("xhtml:div")
-          .classed("legend-div", true)
-          .html((d) => {
-            return `<center><div style="font-size:20px;margin-top:0px;">
-	             	<div style="border-radius:10px;
-                  width:50px;
-                  height:50px;
-                  display:inline-block">
-                </div> 
+  
+  let chooseColor=(n)=>{
+    if(n==1){ return "red"}
+    else if(n==0){ return "blue"}
+    else{return "transparent"}
+  }
+  const defaultCon = svg.selectAll("line");
+    defaultCon.data(mapa.default)
+      .enter().append("line") //[[0,0,1,0],[1,0,0,0]],
+        .style("stroke",(d)=>chooseColor(d[2]))
+        .attr("x1", (d,i) => (width / mapa.columns)*d[1])
+        .attr("y1", (d,i) => (height / mapa.rows)*d[0]+espaco+rectSize/3)
+        .attr("x2", (d,i) => (width / mapa.columns)*d[1]+espaco)
+        .attr("y2", (d,i) => (height / mapa.rows)*d[0]+espaco+rectSize/3);
+  
+  defaultCon.data(mapa.default)
+      .enter().append("line") //[[0,0,1,0],[1,0,0,0]],
+        .style("stroke",(d)=>chooseColor(d[3]))
+        .attr("x1", (d,i) => (width / mapa.columns)*d[1])
+        .attr("y1", (d,i) => (height / mapa.rows)*d[0]+espaco+rectSize*2/3)
+        .attr("x2", (d,i) => (width / mapa.columns)*d[1]+espaco)
+        .attr("y2", (d,i) => (height / mapa.rows)*d[0]+espaco+rectSize*2/3);
+ 
+  
+  const gates = svg.selectAll("g")
+    .data(mapa.gates)
+    .enter().append("g")
+      .attr("transform", (d,i) => `translate(
+          ${(width / mapa.columns)*(i%mapa.columns)},
+          ${height-2*rectSize-1.2*rectSize*Math.floor(i/mapa.columns)})`)
+      .attr("func",d=>assets2[d].func)
+      .call(drag);
+  
+  const label = gates.append("g");
+  
+  const fo = label.selectAll('.legend-fo')
+            .data(d=>[d])
+            .join('foreignObject')
+              .classed('legend-fo', true)
+              .attr('width',234*proporcao)
+              .attr('height',237*proporcao);
+  
+  const subdiv = fo.selectAll('.legend-div')
+            .data(d=>[d])
+            .join('xhtml:div')
+            .classed('legend-div', true)
+            //.attr("transform",(d)=> `translate(${-rectSize},${rectSize}`)
+            .html(
+              d=>{
+               return`<div style="margin-top:0px;">
                 ${assets2[d].image}
-							</div></center>`;
-          })
-          .join("");
+							</div>`
+              }).join('');
+  
+  let x = (width / mapa.columns)*mapa.lamp[1]
+  let y = (height / mapa.rows)*mapa.lamp[0]
+  const lamp = svg.append("g")
+      .attr("transform", d=>`translate(${x},${y})`)
 
-        let x = (width / mapa.columns) * mapa.lamp[1];
-        let y = (height / mapa.rows) * mapa.lamp[0];
-        const lamp = svg.append("g").attr("transform", (d) => `translate(${x},${y})`);
+  const label2 = lamp.append("g");
+  
+  const fo2 = label2.selectAll('.legend-fo')
+            .data([1])
+            .join('foreignObject')
+              .classed('legend-fo', true)
+              .attr('width',234*proporcao)
+              .attr('height',234*proporcao);
+  
+  let subdiv2 = fo2.selectAll('.legend-div')
+            .data(d=>[1])
+            .join('xhtml:div')
+            .classed('legend-div', true)
+            .html(
+              d=>{
+               return`<div>
+                ${evaluateLamp()?lampON:lampOff}
+							</div>`  
+              }).join('');
+  
+  
+  //////////////
+  //dragFunctions
+  ////////
+  
+  function updateRect(target,isDropTarget,func=false) {
+    target.classed("dropTarget", isDropTarget);
+    if(isDropTarget & !!func){
+      target.attr("func",func)
+    };
+  };
+  
+  function dragCircle(event) {
+    const [x, y] = d3.pointer(event, svg.node());
+    let gate = d3.select(this)
+      .attr("transform", `translate(${x-rectSize/2},${y-rectSize/2})`);
+    rects
+      .each(
+      function(d) { 
+        let atual = d3.select(this);
+        updateRect(
+          atual,
+          overDragTarget(atual,x, y),
+        );
+      });
+  };
+  
+  function overDragTarget(target,x, y) {
+    let rectBounds = target.node().getBBox();
+    return contains(rectBounds, ({x:x, y:y}));
+  }
+  
+  function startDragging(event) {
+    const isDragging = true;
+    d3.select(this)
+      .classed("dragging", isDragging)
+      .raise(); // SVG elements don't have a z-index so bring the circle to the top
+    
+    const [x, y] = d3.pointer(event, svg.node());
+    rects
+      .each(
+      function(d) { 
+        let atual = d3.select(this);
+        updateRect(
+          atual,
+          overDragTarget(atual,x, y),
+          'undefined'
+        );
+      });
+  
+    evaluateLamp();
+    updateLamp();
+  }
+  
+  function evaluateLamp() {
+    let i = 0;
+    let allFunc = Object.assign({});
+    rects.each(function (d) {
+      let atual = d3.select(this);
+      allFunc[`f${i}`] = eval(atual.attr("func"));
+      i++;
+    });
 
-        const label2 = lamp.append("g");
+    if (mapa.solution(allFunc)) {
+      mapa.onComplete();
+      return true;
+    }
 
-        const fo2 = label2
-          .selectAll(".legend-fo")
-          .data([1])
-          .join("foreignObject")
-          .classed("legend-fo", true)
-          .attr("width", 234)
-          .attr("height", 300);
-
-        let subdiv2 = fo2
-          .selectAll(".legend-div")
-          .data((d) => [1])
-          .join("xhtml:div")
-          .classed("legend-div", true)
-          .html((d) => {
-            return `<center><div style="font-size:20px;margin-top:0px;">
-	             	<div style="border-radius:10px;
-                  width:50px;
-                  height:50px;
-                  display:inline-block">
-                </div> 
-                ${evaluateLamp() ? lampON : lampOff}
-							</div></center>`;
-          })
-          .join("");
-
-        //////////////
-        //dragFunctions
-        ////////
-
-        function updateRect(target, isDropTarget, func = false) {
-          target.classed("dropTarget", isDropTarget);
-          if (isDropTarget & !!func) {
-            target.attr("func", func);
-          }
-        }
-
-        function dragCircle(event) {
-          const [x, y] = d3.pointer(event, svg.node());
-          let gate = d3.select(this).attr("transform", `translate(${x - 150},${y - 150})`);
-          rects.each(function (d) {
-            let atual = d3.select(this);
-            updateRect(atual, overDragTarget(atual, x, y));
-          });
-        }
-
-        function overDragTarget(target, x, y) {
-          let rectBounds = target.node().getBBox();
-          return contains(rectBounds, { x: x, y: y });
-        }
-
-        function startDragging(event) {
-          const isDragging = true;
-          d3.select(this).classed("dragging", isDragging).raise(); // SVG elements don't have a z-index so bring the circle to the top
-
-          const [x, y] = d3.pointer(event, svg.node());
-          rects.each(function (d) {
-            let atual = d3.select(this);
-            updateRect(atual, overDragTarget(atual, x, y), "undefined");
-          });
-
-          evaluateLamp();
-          updateLamp();
-        }
-
-        function evaluateLamp() {
-          let i = 0;
-          let allFunc = Object.assign({});
-          rects.each(function (d) {
-            let atual = d3.select(this);
-            allFunc[`f${i}`] = eval(atual.attr("func"));
-            i++;
-          });
-
-          if (mapa.solution(allFunc)) {
-            mapa.onComplete();
-            return true;
-          }
-
-          return false;
-        }
-
-        function updateLamp() {
-          subdiv2
-            .html((d) => {
-              return `<center><div style="font-size:20px;margin-top:0px;">
-	             	<div style="border-radius:10px;
-                  width:50px;
-                  height:50px;
-                  display:inline-block">
-                </div> 
-                ${evaluateLamp() ? lampON : lampOff}
-							</div></center>`;
-            })
-            .join("");
-        }
-
-        function endDragging(event) {
-          //updateRect(rect,true,'(a,b)=>(a|b)');
-          const isDragging = false;
-          const circle = d3.select(this).classed("dragging", isDragging);
-
-          const [x, y] = d3.pointer(event, svg.node());
-          let gate = d3.select(this);
-          rects.each(function (d) {
-            //console.log(d3.select(this))
-            let atual = d3.select(this);
-            overDragTarget(atual, x, y) &&
-              gate.attr(
-                "transform",
+    return false;
+  }
+  
+  function updateLamp(){
+    subdiv2.html(
+              d=>{
+               return`
+	             	<div>
+                ${evaluateLamp()?lampON:lampOff}
+							</div>`  
+              }).join('');
+  }
+  
+  function endDragging(event) {
+    const isDragging = false
+    const circle = d3.select(this)
+      .classed("dragging", isDragging);
+    
+    const [x, y] = d3.pointer(event, svg.node());
+    let gate = d3.select(this);
+    rects
+      .each(
+      function(d) { 
+        //console.log(d3.select(this))
+        let atual = d3.select(this);
+        overDragTarget(atual,x, y)&&
+          gate
+          .attr("transform", 
                 `translate(
-                  ${atual.attr("x") - 55},
-                  ${atual.attr("y") - 97}
-                )`
-              );
-            //gate.attr('x',atual.attr('x'));
-            //gate.attr('y',atual.attr('y'));
-            updateRect(atual, overDragTarget(atual, x, y), gate.attr("func"));
-          });
-
-          evaluateLamp();
-          updateLamp();
-        }
-
-        return svg.node();
-      }
-    );
-  main
-    .variable(observer("assets"))
-    .define(
-      "assets",
-      ["AND", "AND0", "AND1", "OR", "OR0", "OR1"],
-      function (AND, AND0, AND1, OR, OR0, OR1) {
-        return Object.assign({
-          AND: AND,
-          AND0: AND0,
-          AND1: AND1,
-          OR: OR,
-          OR0: OR0,
-          OR1: OR1,
-        });
-      }
-    );
-  main.variable(observer("contains")).define("contains", function () {
-    return function contains(rect, point) {
-      return (
-        point.x >= rect.x &&
-        point.y >= rect.y &&
-        point.x <= rect.x + rect.width &&
-        point.y <= rect.y + rect.height
-      );
-    };
-  });
-  main.variable(observer("X")).define("X", ["width"], function (width) {
-    return width / 3;
-  });
-  main.variable(observer("Y")).define("Y", ["height"], function (height) {
-    return height / 2;
-  });
-  main.variable(observer("r")).define("r", function () {
-    return 50;
-  });
-  main.variable(observer("style")).define("style", ["html"], function (html) {
-    return html`<style>
-      circle.dragging {
-        filter: url(#shadow);
-      }
-      rect {
-        fill: none;
-        stroke: magenta;
-        stroke-width: 2;
-      }
-      rect.dropTarget {
-        stroke-width: 4;
-      }
-      line {
-        stroke: black;
-        stroke-width: 4;
-      }
-      polyline {
-        fill: none;
-        stroke: black;
-        stroke-width: 4;
-      }
-    </style>`;
-  });
-  main.variable(observer()).define(["width"], function (width) {
-    return width;
-  });
-  main.variable(observer("solution")).define("solution", function () {
-    return function solution(allFunc) {
-      let f0 = allFunc.f0;
-      let f1 = allFunc.f1;
-      let f2 = allFunc.f2;
-      let f3 = allFunc.f3;
-      let f4 = allFunc.f4;
-      if (f1 && f2 && f3 && f4) {
-        console.log(!!f4(f3(f2(f1(1, 1), 1), 1), 1)); //funçã meramente ilustrativa
-        return !!f4(f3(f2(f1(1, 1), 1), 1), 1);
-      }
-    };
-  });
-  main.variable(observer("height")).define("height", function () {
-    return 500;
-  });
-  main.variable(observer("AND1")).define("AND1", ["width"], function (width) {
-    return `<svg width="${
-      width / 5
-    }" height="${width / 5}" viewBox="0 0 234 237" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  ${atual.attr('x')-espaco},
+                  ${atual.attr('y')-espaco}
+                )`);
+        
+        updateRect(
+          atual,
+          overDragTarget(atual,x, y),
+          gate.attr("func")
+        );
+      });
+  
+    evaluateLamp();
+    updateLamp();
+  }
+  
+  return svg.node();
+}
+);
+  main.variable(observer("style")).define("style", ["html"], function(html){return(
+html`<style>
+  circle.dragging { filter: url(#shadow) }
+  rect { fill: none; stroke: magenta; stroke-width: 2; }
+  rect.dropTarget { stroke-width: 3; }
+  line{ stroke:black; stroke-width:3}
+  polyline.connection{ fill:none; stroke-width:3}
+</style>`
+)});
+  main.variable(observer("contains")).define("contains", function(){return(
+function contains(rect, point) {
+  return (
+    point.x >= rect.x &&
+    point.y >= rect.y &&
+    point.x <= rect.x + rect.width &&
+    point.y <= rect.y + rect.height
+  );
+}
+)});
+  main.variable(observer("AND1")).define("AND1", ["brickSize"], function(brickSize){return(
+`<svg width="${brickSize}" height="${brickSize}" viewBox="0 0 234 237" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M223.931 145.104V123.896C227.831 123.885 230.989 120.727 231 116.828V95.6205C230.989 91.7211 227.831 88.5628 223.931 88.5516V67.3449C227.831 67.3333 230.989 64.1754 231 60.276V39.0689C230.989 35.1695 227.831 32.0112 223.931 32H192.121C188.221 32.0112 185.063 35.1695 185.052 39.0689H163.845C163.833 35.1695 160.675 32.0112 156.776 32H33.0689C29.1695 32.0112 26.0112 35.1695 26 39.0689V60.276C26.0116 64.1754 29.1695 67.3337 33.0689 67.3449V88.552C29.1695 88.5632 26.0112 91.7215 26 95.6209V116.828C26.0116 120.727 29.1695 123.886 33.0689 123.897V145.104C29.1695 145.115 26.0112 148.273 26 152.172V173.38C26.0116 177.279 29.1695 180.437 33.0689 180.448V201.656C29.1695 201.667 26.0112 204.825 26 208.724V229.931C26.0116 233.831 29.1695 236.989 33.0689 237H64.8791C68.7785 236.988 71.9368 233.831 71.948 229.931H93.1551C93.1667 233.831 96.3246 236.989 100.224 237H223.931C227.831 236.988 230.989 233.831 231 229.931V208.724C230.989 204.825 227.831 201.666 223.931 201.655V180.448C227.831 180.436 230.989 177.279 231 173.379V152.172C230.989 148.273 227.831 145.115 223.931 145.104Z" fill="#FCCC88"/>
 <path d="M33.0689 32H156.776C160.68 32 163.845 35.1647 163.845 39.0689V60.276C163.845 64.1802 160.68 67.3449 156.776 67.3449H33.0689C29.1647 67.3449 26 64.1798 26 60.276V39.0689C26 35.1647 29.1647 32 33.0689 32Z" fill="#CD4F38"/>
 <path d="M192.121 32H223.931C227.835 32 231 35.1647 231 39.0689V60.276C231 64.1802 227.835 67.3449 223.931 67.3449H192.121C188.217 67.3449 185.052 64.1802 185.052 60.276V39.0689C185.052 35.1647 188.217 32 192.121 32Z" fill="#DC6C33"/>
@@ -440,12 +353,10 @@ a medida que o jogador posiciona as peças.`;
 </filter>
 </defs>
 </svg>
- `;
-  });
-  main.variable(observer("AND0")).define("AND0", ["width"], function (width) {
-    return `<svg width="${
-      width / 5
-    }" height="${width / 5}" viewBox="0 0 234 237" fill="none" xmlns="http://www.w3.org/2000/svg">
+ `
+)});
+  main.variable(observer("AND0")).define("AND0", ["brickSize"], function(brickSize){return(
+`<svg width="${brickSize}" height="${brickSize}" viewBox="0 0 234 237" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M223.931 145.104V123.896C227.831 123.885 230.989 120.727 231 116.828V95.6205C230.989 91.7211 227.831 88.5628 223.931 88.5516V67.3449C227.831 67.3333 230.989 64.1754 231 60.276V39.0689C230.989 35.1695 227.831 32.0112 223.931 32H192.121C188.221 32.0112 185.063 35.1695 185.052 39.0689H163.845C163.833 35.1695 160.675 32.0112 156.776 32H33.0689C29.1695 32.0112 26.0112 35.1695 26 39.0689V60.276C26.0116 64.1754 29.1695 67.3337 33.0689 67.3449V88.552C29.1695 88.5632 26.0112 91.7215 26 95.6209V116.828C26.0116 120.727 29.1695 123.886 33.0689 123.897V145.104C29.1695 145.115 26.0112 148.273 26 152.172V173.38C26.0116 177.279 29.1695 180.437 33.0689 180.448V201.656C29.1695 201.667 26.0112 204.825 26 208.724V229.931C26.0116 233.831 29.1695 236.989 33.0689 237H64.8791C68.7785 236.988 71.9368 233.831 71.948 229.931H93.1551C93.1667 233.831 96.3246 236.989 100.224 237H223.931C227.831 236.988 230.989 233.831 231 229.931V208.724C230.989 204.825 227.831 201.666 223.931 201.655V180.448C227.831 180.436 230.989 177.279 231 173.379V152.172C230.989 148.273 227.831 145.115 223.931 145.104Z" fill="#FCCC88"/>
 <path d="M33.0689 32H156.776C160.68 32 163.845 35.1647 163.845 39.0689V60.276C163.845 64.1802 160.68 67.3449 156.776 67.3449H33.0689C29.1647 67.3449 26 64.1798 26 60.276V39.0689C26 35.1647 29.1647 32 33.0689 32Z" fill="#CD4F38"/>
 <path d="M192.121 32H223.931C227.835 32 231 35.1647 231 39.0689V60.276C231 64.1802 227.835 67.3449 223.931 67.3449H192.121C188.217 67.3449 185.052 64.1802 185.052 60.276V39.0689C185.051 35.1647 188.217 32 192.121 32Z" fill="#DC6C33"/>
@@ -488,13 +399,11 @@ a medida que o jogador posiciona as peças.`;
 </filter>
 </defs>
 </svg>
-`;
-  });
-  main.variable(observer("AND")).define("AND", ["width"], function (width) {
-    return `
-<svg width="${
-      width / 5
-    }" height="${width / 5}" viewBox="0 0 234 237" fill="none" xmlns="http://www.w3.org/2000/svg">
+`
+)});
+  main.variable(observer("AND")).define("AND", ["brickSize"], function(brickSize){return(
+`
+<svg width="${brickSize}" height="${brickSize}" viewBox="0 0 234 237" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M223.931 145.104V123.896C227.831 123.885 230.989 120.727 231 116.828V95.6205C230.989 91.7211 227.831 88.5628 223.931 88.5516V67.3449C227.831 67.3333 230.989 64.1754 231 60.276V39.0689C230.989 35.1695 227.831 32.0112 223.931 32H192.121C188.221 32.0112 185.063 35.1695 185.052 39.0689H163.845C163.833 35.1695 160.675 32.0112 156.776 32H33.0689C29.1695 32.0112 26.0112 35.1695 26 39.0689V60.276C26.0116 64.1754 29.1695 67.3337 33.0689 67.3449V88.552C29.1695 88.5632 26.0112 91.7215 26 95.6209V116.828C26.0116 120.727 29.1695 123.886 33.0689 123.897V145.104C29.1695 145.115 26.0112 148.273 26 152.172V173.38C26.0116 177.279 29.1695 180.437 33.0689 180.448V201.656C29.1695 201.667 26.0112 204.825 26 208.724V229.931C26.0116 233.831 29.1695 236.989 33.0689 237H64.8791C68.7785 236.988 71.9368 233.831 71.948 229.931H93.1551C93.1667 233.831 96.3246 236.989 100.224 237H223.931C227.831 236.988 230.989 233.831 231 229.931V208.724C230.989 204.825 227.831 201.666 223.931 201.655V180.448C227.831 180.436 230.989 177.279 231 173.379V152.172C230.989 148.273 227.831 145.115 223.931 145.104Z" fill="#FCCC88"/>
 <path d="M33.0689 32H156.776C160.68 32 163.845 35.1647 163.845 39.0689V60.276C163.845 64.1802 160.68 67.3449 156.776 67.3449H33.0689C29.1647 67.3449 26 64.1798 26 60.276V39.0689C26 35.1647 29.1647 32 33.0689 32Z" fill="#CD4F38"/>
 <path d="M192.121 32H223.931C227.835 32 231 35.1647 231 39.0689V60.276C231 64.1802 227.835 67.3449 223.931 67.3449H192.121C188.217 67.3449 185.052 64.1802 185.052 60.276V39.0689C185.051 35.1647 188.217 32 192.121 32Z" fill="#DC6C33"/>
@@ -536,12 +445,10 @@ a medida que o jogador posiciona as peças.`;
 </filter>
 </defs>
 </svg>
-`;
-  });
-  main.variable(observer("OR1")).define("OR1", ["width"], function (width) {
-    return ` <svg width="${
-      width / 5
-    }" height="${width / 5}" viewBox="0 0 234 237" fill="none" xmlns="http://www.w3.org/2000/svg">
+`
+)});
+  main.variable(observer("OR1")).define("OR1", ["brickSize"], function(brickSize){return(
+` <svg width="${brickSize}" height="${brickSize}" viewBox="0 0 234 237" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M223.931 145.104V123.896C227.831 123.885 230.989 120.727 231 116.828V95.6205C230.989 91.7211 227.831 88.5628 223.931 88.5516V67.3449C227.831 67.3333 230.989 64.1754 231 60.276V39.0689C230.989 35.1695 227.831 32.0112 223.931 32H192.121C188.221 32.0112 185.063 35.1695 185.052 39.0689H163.845C163.833 35.1695 160.675 32.0112 156.776 32H33.0689C29.1695 32.0112 26.0112 35.1695 26 39.0689V60.276C26.0116 64.1754 29.1695 67.3337 33.0689 67.3449V88.552C29.1695 88.5632 26.0112 91.7215 26 95.6209V116.828C26.0116 120.727 29.1695 123.886 33.0689 123.897V145.104C29.1695 145.115 26.0112 148.273 26 152.172V173.38C26.0116 177.279 29.1695 180.437 33.0689 180.448V201.656C29.1695 201.667 26.0112 204.825 26 208.724V229.931C26.0116 233.831 29.1695 236.989 33.0689 237H64.8791C68.7785 236.988 71.9368 233.831 71.948 229.931H93.1551C93.1667 233.831 96.3246 236.989 100.224 237H223.931C227.831 236.988 230.989 233.831 231 229.931V208.724C230.989 204.825 227.831 201.666 223.931 201.655V180.448C227.831 180.436 230.989 177.279 231 173.379V152.172C230.989 148.273 227.831 145.115 223.931 145.104Z" fill="#FCCC88"/>
 <path d="M33.0689 32H156.776C160.68 32 163.845 35.1647 163.845 39.0689V60.276C163.845 64.1802 160.68 67.3449 156.776 67.3449H33.0689C29.1647 67.3449 26 64.1798 26 60.276V39.0689C26 35.1647 29.1647 32 33.0689 32Z" fill="#CD4F38"/>
 <path d="M192.121 32H223.931C227.835 32 231 35.1647 231 39.0689V60.276C231 64.1802 227.835 67.3449 223.931 67.3449H192.121C188.217 67.3449 185.052 64.1802 185.052 60.276V39.0689C185.052 35.1647 188.217 32 192.121 32Z" fill="#DC6C33"/>
@@ -584,12 +491,10 @@ a medida que o jogador posiciona as peças.`;
 </filter>
 </defs>
 </svg>
-`;
-  });
-  main.variable(observer("OR0")).define("OR0", ["width"], function (width) {
-    return `<svg width="${
-      width / 5
-    }" height="${width / 5}" viewBox="0 0 234 237" fill="none" xmlns="http://www.w3.org/2000/svg">
+`
+)});
+  main.variable(observer("OR0")).define("OR0", ["brickSize"], function(brickSize){return(
+`<svg width="${brickSize}" height="${brickSize}" viewBox="0 0 234 237" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M223.931 145.104V123.896C227.831 123.885 230.989 120.727 231 116.828V95.6205C230.989 91.7211 227.831 88.5628 223.931 88.5516V67.3449C227.831 67.3333 230.989 64.1754 231 60.276V39.0689C230.989 35.1695 227.831 32.0112 223.931 32H192.121C188.221 32.0112 185.063 35.1695 185.052 39.0689H163.845C163.833 35.1695 160.675 32.0112 156.776 32H33.0689C29.1695 32.0112 26.0112 35.1695 26 39.0689V60.276C26.0116 64.1754 29.1695 67.3337 33.0689 67.3449V88.552C29.1695 88.5632 26.0112 91.7215 26 95.6209V116.828C26.0116 120.727 29.1695 123.886 33.0689 123.897V145.104C29.1695 145.115 26.0112 148.273 26 152.172V173.38C26.0116 177.279 29.1695 180.437 33.0689 180.448V201.656C29.1695 201.667 26.0112 204.825 26 208.724V229.931C26.0116 233.831 29.1695 236.989 33.0689 237H64.8791C68.7785 236.988 71.9368 233.831 71.948 229.931H93.1551C93.1667 233.831 96.3246 236.989 100.224 237H223.931C227.831 236.988 230.989 233.831 231 229.931V208.724C230.989 204.825 227.831 201.666 223.931 201.655V180.448C227.831 180.436 230.989 177.279 231 173.379V152.172C230.989 148.273 227.831 145.115 223.931 145.104Z" fill="#FCCC88"/>
 <path d="M33.0689 32H156.776C160.68 32 163.845 35.1647 163.845 39.0689V60.276C163.845 64.1802 160.68 67.3449 156.776 67.3449H33.0689C29.1647 67.3449 26 64.1798 26 60.276V39.0689C26 35.1647 29.1647 32 33.0689 32Z" fill="#CD4F38"/>
 <path d="M192.121 32H223.931C227.835 32 231 35.1647 231 39.0689V60.276C231 64.1802 227.835 67.3449 223.931 67.3449H192.121C188.217 67.3449 185.052 64.1802 185.052 60.276V39.0689C185.051 35.1647 188.217 32 192.121 32Z" fill="#DC6C33"/>
@@ -632,12 +537,10 @@ a medida que o jogador posiciona as peças.`;
 </filter>
 </defs>
 </svg>
-`;
-  });
-  main.variable(observer("OR")).define("OR", ["width"], function (width) {
-    return `<svg width="${
-      width / 5
-    }" height="${width / 5}" viewBox="0 0 234 237" fill="none" xmlns="http://www.w3.org/2000/svg">
+`
+)});
+  main.variable(observer("OR")).define("OR", ["brickSize"], function(brickSize){return(
+`<svg width="${brickSize}" height="${brickSize}" viewBox="0 0 234 237" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M223.931 145.104V123.896C227.831 123.885 230.989 120.727 231 116.828V95.6205C230.989 91.7211 227.831 88.5628 223.931 88.5516V67.3449C227.831 67.3333 230.989 64.1754 231 60.276V39.0689C230.989 35.1695 227.831 32.0112 223.931 32H192.121C188.221 32.0112 185.063 35.1695 185.052 39.0689H163.845C163.833 35.1695 160.675 32.0112 156.776 32H33.0689C29.1695 32.0112 26.0112 35.1695 26 39.0689V60.276C26.0116 64.1754 29.1695 67.3337 33.0689 67.3449V88.552C29.1695 88.5632 26.0112 91.7215 26 95.6209V116.828C26.0116 120.727 29.1695 123.886 33.0689 123.897V145.104C29.1695 145.115 26.0112 148.273 26 152.172V173.38C26.0116 177.279 29.1695 180.437 33.0689 180.448V201.656C29.1695 201.667 26.0112 204.825 26 208.724V229.931C26.0116 233.831 29.1695 236.989 33.0689 237H64.8791C68.7785 236.988 71.9368 233.831 71.948 229.931H93.1551C93.1667 233.831 96.3246 236.989 100.224 237H223.931C227.831 236.988 230.989 233.831 231 229.931V208.724C230.989 204.825 227.831 201.666 223.931 201.655V180.448C227.831 180.436 230.989 177.279 231 173.379V152.172C230.989 148.273 227.831 145.115 223.931 145.104Z" fill="#FCCC88"/>
 <path d="M33.0689 32H156.776C160.68 32 163.845 35.1647 163.845 39.0689V60.276C163.845 64.1802 160.68 67.3449 156.776 67.3449H33.0689C29.1647 67.3449 26 64.1798 26 60.276V39.0689C26 35.1647 29.1647 32 33.0689 32Z" fill="#CD4F38"/>
 <path d="M192.121 32H223.931C227.835 32 231 35.1647 231 39.0689V60.276C231 64.1802 227.835 67.3449 223.931 67.3449H192.121C188.217 67.3449 185.052 64.1802 185.052 60.276V39.0689C185.051 35.1647 188.217 32 192.121 32Z" fill="#DC6C33"/>
@@ -679,12 +582,10 @@ a medida que o jogador posiciona as peças.`;
 </filter>
 </defs>
 </svg>
-`;
-  });
-  main.variable(observer("lampON")).define("lampON", ["width"], function (width) {
-    return `<svg width="${
-      width / 5
-    }" height="${width / 5}" viewBox="0 0 317 317" fill="none" xmlns="http://www.w3.org/2000/svg">
+`
+)});
+  main.variable(observer("lampON")).define("lampON", ["brickSize"], function(brickSize){return(
+`<svg width="${brickSize}" height="${brickSize}" viewBox="0 0 317 317" fill="none" xmlns="http://www.w3.org/2000/svg">
 <g clip-path="url(#clip0)">
 <path fill-rule="evenodd" clip-rule="evenodd" d="M159.5 262C186.838 262 209 240.957 209 215C209 211.922 208.688 208.913 208.093 206H110.907C110.312 208.913 110 211.922 110 215C110 240.957 132.162 262 159.5 262Z" fill="#FFC500"/>
 <path d="M243.6 126.8C228 110.4 207.2 98.8 184 94V79.6C184 76.4 182.8 73.2 180.4 71.2C178 69.2 175.2 67.6 172 67.6H165.6L165.2 6C165.2 2.4 162.4 0 159.2 0C155.6 0 153.2 2.8 153.2 6L153.6 67.6H147.2C144 67.6 140.8 68.8 138.8 71.2C136.8 73.6 135.2 76.4 135.2 79.6V93.6C110.8 98.8 89.6 110.4 73.2 126.8C51.2 148.8 38 178.8 38 212.4C38 216 40.8 218.4 44 218.4H108C109.6 230 114.4 240.4 122.4 248.4C131.6 257.6 144.4 263.2 158.4 263.2C172.4 263.2 185.2 257.6 194.4 248.4C202.4 240.4 207.2 230 208.8 218.4H272.8C276.4 218.4 278.8 215.6 278.8 212.4C278.8 179.2 265.2 148.8 243.6 126.8ZM146.8 80H171.6V92C171.2 92 171.2 92 170.8 92C170 92 169.6 92 168.8 92C165.6 91.6 162 91.6 158.8 91.6C155.6 91.2 152.4 91.6 149.2 91.6C148.4 91.6 147.6 91.6 146.8 92V80ZM186 239.6C178.8 246.8 169.2 250.8 158.8 250.8C148 250.8 138.4 246.4 131.6 239.6C126 234 122 226.8 120.8 218.4H158.8H197.2C195.6 226.4 192 234 186 239.6ZM203.6 206H158.8H114H50.4C52 178.4 63.6 153.6 82 135.6C98.8 118.8 120.8 107.6 145.6 104.8C146.4 104.8 147.6 104.4 148.4 104.4C151.6 104 155.2 104 158.4 104C162 104 165.2 104 168.8 104.4C169.6 104.4 170.8 104.8 171.6 104.8C196.4 107.6 218.4 118.8 235.2 135.6C253.6 154 265.2 178.4 266.8 206H203.6Z" fill="black"/>
@@ -700,25 +601,153 @@ a medida que o jogador posiciona as peças.`;
 </clipPath>
 </defs>
 </svg>
-`;
-  });
-  main.variable(observer("lampOff")).define("lampOff", ["width"], function (width) {
-    return `<svg width="${
-      width / 5
-    }" height="${width / 5}" viewBox="0 0 317 317" fill="none" xmlns="http://www.w3.org/2000/svg">
+`
+)});
+  main.variable(observer("lampOff")).define("lampOff", ["brickSize"], function(brickSize){return(
+`<svg width="${brickSize}" height="${brickSize}" viewBox="0 0 317 317" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M243.6 126.8C228 110.4 207.2 98.8 184 94V79.6C184 76.4 182.8 73.2 180.4 71.2C178 69.2 175.2 67.6 172 67.6H165.6L165.2 6C165.2 2.4 162.4 0 159.2 0C155.6 0 153.2 2.8 153.2 6L153.6 67.6H147.2C144 67.6 140.8 68.8 138.8 71.2C136.8 73.6 135.2 76.4 135.2 79.6V93.6C110.8 98.8 89.6 110.4 73.2 126.8C51.2 148.8 38 178.8 38 212.4C38 216 40.8 218.4 44 218.4H108C109.6 230 114.4 240.4 122.4 248.4C131.6 257.6 144.4 263.2 158.4 263.2C172.4 263.2 185.2 257.6 194.4 248.4C202.4 240.4 207.2 230 208.8 218.4H272.8C276.4 218.4 278.8 215.6 278.8 212.4C278.8 179.2 265.2 148.8 243.6 126.8ZM146.8 80H171.6V92C171.2 92 171.2 92 170.8 92C170 92 169.6 92 168.8 92C165.6 91.6 162 91.6 158.8 91.6C155.6 91.2 152.4 91.6 149.2 91.6C148.4 91.6 147.6 91.6 146.8 92V80ZM186 239.6C178.8 246.8 169.2 250.8 158.8 250.8C148 250.8 138.4 246.4 131.6 239.6C126 234 122 226.8 120.8 218.4H158.8H197.2C195.6 226.4 192 234 186 239.6ZM203.6 206H158.8H114H50.4C52 178.4 63.6 153.6 82 135.6C98.8 118.8 120.8 107.6 145.6 104.8C146.4 104.8 147.6 104.4 148.4 104.4C151.6 104 155.2 104 158.4 104C162 104 165.2 104 168.8 104.4C169.6 104.4 170.8 104.8 171.6 104.8C196.4 107.6 218.4 118.8 235.2 135.6C253.6 154 265.2 178.4 266.8 206H203.6Z" fill="black"/>
 </svg>
- `;
-  });
-  main.variable(observer("rectSize")).define("rectSize", function () {
-    return 150;
-  });
-  main.variable(observer()).define(["md"], function (md) {
-    return md`
-# Imports`;
-  });
-  main.variable(observer("d3")).define("d3", ["require"], function (require) {
-    return require("d3@6");
-  });
+ `
+)});
+  main.variable(observer("XOR")).define("XOR", ["brickSize"], function(brickSize){return(
+`<svg width="${brickSize}" height="${brickSize}" viewBox="0 0 234 237" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M223.931 145.104V123.896C227.831 123.885 230.989 120.727 231 116.828V95.6205C230.989 91.7211 227.831 88.5628 223.931 88.5516V67.3449C227.831 67.3333 230.989 64.1754 231 60.276V39.0689C230.989 35.1695 227.831 32.0112 223.931 32H192.121C188.221 32.0112 185.063 35.1695 185.052 39.0689H163.845C163.833 35.1695 160.675 32.0112 156.776 32H33.0689C29.1695 32.0112 26.0112 35.1695 26 39.0689V60.276C26.0116 64.1754 29.1695 67.3337 33.0689 67.3449V88.552C29.1695 88.5632 26.0112 91.7215 26 95.6209V116.828C26.0116 120.727 29.1695 123.886 33.0689 123.897V145.104C29.1695 145.115 26.0112 148.273 26 152.172V173.38C26.0116 177.279 29.1695 180.437 33.0689 180.448V201.656C29.1695 201.667 26.0112 204.825 26 208.724V229.931C26.0116 233.831 29.1695 236.989 33.0689 237H64.8791C68.7785 236.988 71.9368 233.831 71.948 229.931H93.1551C93.1667 233.831 96.3246 236.989 100.224 237H223.931C227.831 236.988 230.989 233.831 231 229.931V208.724C230.989 204.825 227.831 201.666 223.931 201.655V180.448C227.831 180.436 230.989 177.279 231 173.379V152.172C230.989 148.273 227.831 145.115 223.931 145.104Z" fill="#FCCC88"/>
+<path d="M33.0689 32H156.776C160.68 32 163.845 35.1647 163.845 39.0689V60.276C163.845 64.1802 160.68 67.3449 156.776 67.3449H33.0689C29.1647 67.3449 26 64.1798 26 60.276V39.0689C26 35.1647 29.1647 32 33.0689 32Z" fill="#CD4F38"/>
+<path d="M192.121 32H223.931C227.835 32 231 35.1647 231 39.0689V60.276C231 64.1802 227.835 67.3449 223.931 67.3449H192.121C188.217 67.3449 185.052 64.1802 185.052 60.276V39.0689C185.052 35.1647 188.217 32 192.121 32Z" fill="#DC6C33"/>
+<path d="M100.224 201.655H223.931C227.835 201.655 231 204.82 231 208.724V229.931C231 233.835 227.835 237 223.931 237H100.224C96.3197 237 93.155 233.835 93.155 229.931V208.724C93.155 204.82 96.3201 201.655 100.224 201.655Z" fill="#CD4F38"/>
+<path d="M33.0689 201.655H64.8791C68.7833 201.655 71.948 204.82 71.948 208.724V229.931C71.948 233.835 68.7833 237 64.8791 237H33.0689C29.1647 237 26 233.835 26 229.931V208.724C26 204.82 29.1647 201.655 33.0689 201.655Z" fill="#DC6C33"/>
+<path d="M33.0689 145.104H156.776C160.68 145.104 163.845 148.269 163.845 152.172V173.379C163.845 177.284 160.68 180.448 156.776 180.448H33.0689C29.1647 180.448 26 177.283 26 173.379V152.172C26 148.268 29.1647 145.104 33.0689 145.104Z" fill="#DC6C33"/>
+<path d="M192.121 145.104H223.931C227.835 145.104 231 148.269 231 152.172V173.379C231 177.284 227.835 180.448 223.931 180.448H192.121C188.217 180.448 185.052 177.284 185.052 173.379V152.172C185.052 148.268 188.217 145.104 192.121 145.104Z" fill="#CD4F38"/>
+<path d="M100.224 88.5515H223.931C227.835 88.5515 231 91.7162 231 95.6204V116.828C231 120.732 227.835 123.896 223.931 123.896H100.224C96.3197 123.896 93.155 120.732 93.155 116.828V95.6204C93.155 91.7166 96.3201 88.5515 100.224 88.5515Z" fill="#ED634C"/>
+<path d="M33.0689 88.5515H64.8791C68.7833 88.5515 71.948 91.7162 71.948 95.6204V116.828C71.948 120.732 68.7833 123.896 64.8791 123.896H33.0689C29.1647 123.896 26 120.732 26 116.828V95.6204C26 91.7166 29.1647 88.5515 33.0689 88.5515Z" fill="#EC9130"/>
+<path d="M33.0689 32H156.776C160.68 32 163.845 35.1647 163.845 39.0689V60.276C163.845 64.1802 160.68 67.3449 156.776 67.3449H33.0689C29.1647 67.3449 26 64.1798 26 60.276V39.0689C26 35.1647 29.1647 32 33.0689 32Z" fill="#CD4F38"/>
+<path d="M192.121 32H223.931C227.835 32 231 35.1647 231 39.0689V60.276C231 64.1802 227.835 67.3449 223.931 67.3449H192.121C188.217 67.3449 185.052 64.1802 185.052 60.276V39.0689C185.052 35.1647 188.217 32 192.121 32Z" fill="#EC9130"/>
+<path d="M100.224 201.655H223.931C227.835 201.655 231 204.82 231 208.724V229.931C231 233.835 227.835 237 223.931 237H100.224C96.3197 237 93.155 233.835 93.155 229.931V208.724C93.155 204.82 96.3201 201.655 100.224 201.655Z" fill="#CD4F38"/>
+<path d="M33.0689 201.655H64.8791C68.7833 201.655 71.948 204.82 71.948 208.724V229.931C71.948 233.835 68.7833 237 64.8791 237H33.0689C29.1647 237 26 233.835 26 229.931V208.724C26 204.82 29.1647 201.655 33.0689 201.655Z" fill="#DC6C33"/>
+<path d="M33.0689 145.104H156.776C160.68 145.104 163.845 148.269 163.845 152.172V173.379C163.845 177.284 160.68 180.448 156.776 180.448H33.0689C29.1647 180.448 26 177.283 26 173.379V152.172C26 148.268 29.1647 145.104 33.0689 145.104Z" fill="#DC6C33"/>
+<path d="M192.121 145.104H223.931C227.835 145.104 231 148.269 231 152.172V173.379C231 177.284 227.835 180.448 223.931 180.448H192.121C188.217 180.448 185.052 177.284 185.052 173.379V152.172C185.052 148.268 188.217 145.104 192.121 145.104Z" fill="#CD4F38"/>
+<path d="M100.224 88.5515H223.931C227.835 88.5515 231 91.7162 231 95.6204V116.828C231 120.732 227.835 123.896 223.931 123.896H100.224C96.3197 123.896 93.155 120.732 93.155 116.828V95.6204C93.155 91.7166 96.3201 88.5515 100.224 88.5515Z" fill="#DC6C33"/>
+<path d="M33.0689 88.5515H64.8791C68.7833 88.5515 71.948 91.7162 71.948 95.6204V116.828C71.948 120.732 68.7833 123.896 64.8791 123.896H33.0689C29.1647 123.896 26 120.732 26 116.828V95.6204C26 91.7166 29.1647 88.5515 33.0689 88.5515Z" fill="#EC9130"/>
+<g filter="url(#filter0_dd)">
+<rect x="60" y="90" width="144" height="90" fill="#C4C4C4"/>
+</g>
+<path d="M100.562 133.953L108.742 120.875H114.039L103.258 137.797L114.297 155H108.953L100.562 141.688L92.125 155H86.8047L97.8672 137.797L87.0625 120.875H92.3359L100.562 133.953ZM145.164 139.039C145.164 142.383 144.602 145.305 143.477 147.805C142.352 150.289 140.758 152.188 138.695 153.5C136.633 154.812 134.227 155.469 131.477 155.469C128.789 155.469 126.406 154.812 124.328 153.5C122.25 152.172 120.633 150.289 119.477 147.852C118.336 145.398 117.75 142.562 117.719 139.344V136.883C117.719 133.602 118.289 130.703 119.43 128.188C120.57 125.672 122.18 123.75 124.258 122.422C126.352 121.078 128.742 120.406 131.43 120.406C134.164 120.406 136.57 121.07 138.648 122.398C140.742 123.711 142.352 125.625 143.477 128.141C144.602 130.641 145.164 133.555 145.164 136.883V139.039ZM140.688 136.836C140.688 132.789 139.875 129.688 138.25 127.531C136.625 125.359 134.352 124.273 131.43 124.273C128.586 124.273 126.344 125.359 124.703 127.531C123.078 129.688 122.242 132.688 122.195 136.531V139.039C122.195 142.961 123.016 146.047 124.656 148.297C126.312 150.531 128.586 151.648 131.477 151.648C134.383 151.648 136.633 150.594 138.227 148.484C139.82 146.359 140.641 143.32 140.688 139.367V136.836ZM164.43 141.195H156.414V155H151.891V120.875H163.188C167.031 120.875 169.984 121.75 172.047 123.5C174.125 125.25 175.164 127.797 175.164 131.141C175.164 133.266 174.586 135.117 173.43 136.695C172.289 138.273 170.695 139.453 168.648 140.234L176.664 154.719V155H171.836L164.43 141.195ZM156.414 137.516H163.328C165.562 137.516 167.336 136.938 168.648 135.781C169.977 134.625 170.641 133.078 170.641 131.141C170.641 129.031 170.008 127.414 168.742 126.289C167.492 125.164 165.68 124.594 163.305 124.578H156.414V137.516Z" fill="black"/>
+<path d="M16 170H60" stroke="black" stroke-width="5"/>
+<path d="M18 111H60" stroke="black" stroke-width="5"/>
+<line x1="204" y1="139" x2="234" y2="139" stroke="black" stroke-width="5"/>
+<defs>
+<filter id="filter0_dd" x="56" y="90" width="152" height="98" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"/>
+<feOffset dy="4"/>
+<feGaussianBlur stdDeviation="2"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"/>
+<feOffset dy="4"/>
+<feGaussianBlur stdDeviation="2"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
+<feBlend mode="normal" in2="effect1_dropShadow" result="effect2_dropShadow"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect2_dropShadow" result="shape"/>
+</filter>
+</defs>
+</svg>
+ `
+)});
+  main.variable(observer("NOR0")).define("NOR0", ["brickSize"], function(brickSize){return(
+`<svg width=${brickSize} height=${brickSize} viewBox="0 0 234 237" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M223.931 145.104V123.896C227.831 123.885 230.989 120.727 231 116.828V95.6205C230.989 91.7211 227.831 88.5628 223.931 88.5516V67.3449C227.831 67.3333 230.989 64.1754 231 60.276V39.0689C230.989 35.1695 227.831 32.0112 223.931 32H192.121C188.221 32.0112 185.063 35.1695 185.052 39.0689H163.845C163.833 35.1695 160.675 32.0112 156.776 32H33.0689C29.1695 32.0112 26.0112 35.1695 26 39.0689V60.276C26.0116 64.1754 29.1695 67.3337 33.0689 67.3449V88.552C29.1695 88.5632 26.0112 91.7215 26 95.6209V116.828C26.0116 120.727 29.1695 123.886 33.0689 123.897V145.104C29.1695 145.115 26.0112 148.273 26 152.172V173.38C26.0116 177.279 29.1695 180.437 33.0689 180.448V201.656C29.1695 201.667 26.0112 204.825 26 208.724V229.931C26.0116 233.831 29.1695 236.989 33.0689 237H64.8791C68.7785 236.988 71.9368 233.831 71.948 229.931H93.1551C93.1667 233.831 96.3246 236.989 100.224 237H223.931C227.831 236.988 230.989 233.831 231 229.931V208.724C230.989 204.825 227.831 201.666 223.931 201.655V180.448C227.831 180.436 230.989 177.279 231 173.379V152.172C230.989 148.273 227.831 145.115 223.931 145.104Z" fill="#FCCC88"/>
+<path d="M33.0689 32H156.776C160.68 32 163.845 35.1647 163.845 39.0689V60.276C163.845 64.1802 160.68 67.3449 156.776 67.3449H33.0689C29.1647 67.3449 26 64.1798 26 60.276V39.0689C26 35.1647 29.1647 32 33.0689 32Z" fill="#CD4F38"/>
+<path d="M192.121 32H223.931C227.835 32 231 35.1647 231 39.0689V60.276C231 64.1802 227.835 67.3449 223.931 67.3449H192.121C188.217 67.3449 185.052 64.1802 185.052 60.276V39.0689C185.052 35.1647 188.217 32 192.121 32Z" fill="#DC6C33"/>
+<path d="M100.224 201.655H223.931C227.835 201.655 231 204.82 231 208.724V229.931C231 233.835 227.835 237 223.931 237H100.224C96.3197 237 93.155 233.835 93.155 229.931V208.724C93.155 204.82 96.3201 201.655 100.224 201.655Z" fill="#CD4F38"/>
+<path d="M33.0689 201.655H64.8791C68.7833 201.655 71.948 204.82 71.948 208.724V229.931C71.948 233.835 68.7833 237 64.8791 237H33.0689C29.1647 237 26 233.835 26 229.931V208.724C26 204.82 29.1647 201.655 33.0689 201.655Z" fill="#DC6C33"/>
+<path d="M33.0689 145.104H156.776C160.68 145.104 163.845 148.269 163.845 152.172V173.379C163.845 177.284 160.68 180.448 156.776 180.448H33.0689C29.1647 180.448 26 177.283 26 173.379V152.172C26 148.268 29.1647 145.104 33.0689 145.104Z" fill="#DC6C33"/>
+<path d="M192.121 145.104H223.931C227.835 145.104 231 148.269 231 152.172V173.379C231 177.284 227.835 180.448 223.931 180.448H192.121C188.217 180.448 185.052 177.284 185.052 173.379V152.172C185.052 148.268 188.217 145.104 192.121 145.104Z" fill="#CD4F38"/>
+<path d="M100.224 88.5515H223.931C227.835 88.5515 231 91.7162 231 95.6204V116.828C231 120.732 227.835 123.896 223.931 123.896H100.224C96.3197 123.896 93.155 120.732 93.155 116.828V95.6204C93.155 91.7166 96.3201 88.5515 100.224 88.5515Z" fill="#ED634C"/>
+<path d="M33.0689 88.5515H64.8791C68.7833 88.5515 71.948 91.7162 71.948 95.6204V116.828C71.948 120.732 68.7833 123.896 64.8791 123.896H33.0689C29.1647 123.896 26 120.732 26 116.828V95.6204C26 91.7166 29.1647 88.5515 33.0689 88.5515Z" fill="#EC9130"/>
+<path d="M33.0689 32H156.776C160.68 32 163.845 35.1647 163.845 39.0689V60.276C163.845 64.1802 160.68 67.3449 156.776 67.3449H33.0689C29.1647 67.3449 26 64.1798 26 60.276V39.0689C26 35.1647 29.1647 32 33.0689 32Z" fill="#CD4F38"/>
+<path d="M192.121 32H223.931C227.835 32 231 35.1647 231 39.0689V60.276C231 64.1802 227.835 67.3449 223.931 67.3449H192.121C188.217 67.3449 185.052 64.1802 185.052 60.276V39.0689C185.052 35.1647 188.217 32 192.121 32Z" fill="#EC9130"/>
+<path d="M100.224 201.655H223.931C227.835 201.655 231 204.82 231 208.724V229.931C231 233.835 227.835 237 223.931 237H100.224C96.3197 237 93.155 233.835 93.155 229.931V208.724C93.155 204.82 96.3201 201.655 100.224 201.655Z" fill="#CD4F38"/>
+<path d="M33.0689 201.655H64.8791C68.7833 201.655 71.948 204.82 71.948 208.724V229.931C71.948 233.835 68.7833 237 64.8791 237H33.0689C29.1647 237 26 233.835 26 229.931V208.724C26 204.82 29.1647 201.655 33.0689 201.655Z" fill="#DC6C33"/>
+<path d="M33.0689 145.104H156.776C160.68 145.104 163.845 148.269 163.845 152.172V173.379C163.845 177.284 160.68 180.448 156.776 180.448H33.0689C29.1647 180.448 26 177.283 26 173.379V152.172C26 148.268 29.1647 145.104 33.0689 145.104Z" fill="#DC6C33"/>
+<path d="M192.121 145.104H223.931C227.835 145.104 231 148.269 231 152.172V173.379C231 177.284 227.835 180.448 223.931 180.448H192.121C188.217 180.448 185.052 177.284 185.052 173.379V152.172C185.052 148.268 188.217 145.104 192.121 145.104Z" fill="#CD4F38"/>
+<path d="M100.224 88.5515H223.931C227.835 88.5515 231 91.7162 231 95.6204V116.828C231 120.732 227.835 123.896 223.931 123.896H100.224C96.3197 123.896 93.155 120.732 93.155 116.828V95.6204C93.155 91.7166 96.3201 88.5515 100.224 88.5515Z" fill="#DC6C33"/>
+<path d="M33.0689 88.5515H64.8791C68.7833 88.5515 71.948 91.7162 71.948 95.6204V116.828C71.948 120.732 68.7833 123.896 64.8791 123.896H33.0689C29.1647 123.896 26 120.732 26 116.828V95.6204C26 91.7166 29.1647 88.5515 33.0689 88.5515Z" fill="#EC9130"/>
+<g filter="url(#filter0_dd)">
+<rect x="60" y="90" width="144" height="90" fill="#C4C4C4"/>
+</g>
+<path d="M113.289 155H108.766L91.5859 128.703V155H87.0625V120.875H91.5859L108.812 147.289V120.875H113.289V155ZM147.531 139.039C147.531 142.383 146.969 145.305 145.844 147.805C144.719 150.289 143.125 152.188 141.062 153.5C139 154.812 136.594 155.469 133.844 155.469C131.156 155.469 128.773 154.812 126.695 153.5C124.617 152.172 123 150.289 121.844 147.852C120.703 145.398 120.117 142.562 120.086 139.344V136.883C120.086 133.602 120.656 130.703 121.797 128.188C122.938 125.672 124.547 123.75 126.625 122.422C128.719 121.078 131.109 120.406 133.797 120.406C136.531 120.406 138.938 121.07 141.016 122.398C143.109 123.711 144.719 125.625 145.844 128.141C146.969 130.641 147.531 133.555 147.531 136.883V139.039ZM143.055 136.836C143.055 132.789 142.242 129.688 140.617 127.531C138.992 125.359 136.719 124.273 133.797 124.273C130.953 124.273 128.711 125.359 127.07 127.531C125.445 129.688 124.609 132.688 124.562 136.531V139.039C124.562 142.961 125.383 146.047 127.023 148.297C128.68 150.531 130.953 151.648 133.844 151.648C136.75 151.648 139 150.594 140.594 148.484C142.188 146.359 143.008 143.32 143.055 139.367V136.836ZM166.797 141.195H158.781V155H154.258V120.875H165.555C169.398 120.875 172.352 121.75 174.414 123.5C176.492 125.25 177.531 127.797 177.531 131.141C177.531 133.266 176.953 135.117 175.797 136.695C174.656 138.273 173.062 139.453 171.016 140.234L179.031 154.719V155H174.203L166.797 141.195ZM158.781 137.516H165.695C167.93 137.516 169.703 136.938 171.016 135.781C172.344 134.625 173.008 133.078 173.008 131.141C173.008 129.031 172.375 127.414 171.109 126.289C169.859 125.164 168.047 124.594 165.672 124.578H158.781V137.516Z" fill="black"/>
+<path d="M16 170H60" stroke="black" stroke-width="5"/>
+<path d="M18 0V111H60" stroke="#2496FF" stroke-width="5"/>
+<line x1="204" y1="139" x2="234" y2="139" stroke="black" stroke-width="5"/>
+<path d="M12.3789 14.7227C12.3789 17.2617 11.9453 19.1484 11.0781 20.3828C10.2109 21.6172 8.85547 22.2344 7.01172 22.2344C5.19141 22.2344 3.84375 21.6328 2.96875 20.4297C2.09375 19.2188 1.64062 17.4141 1.60938 15.0156V12.1211C1.60938 9.61328 2.04297 7.75 2.91016 6.53125C3.77734 5.3125 5.13672 4.70312 6.98828 4.70312C8.82422 4.70312 10.1758 5.29297 11.043 6.47266C11.9102 7.64453 12.3555 9.45703 12.3789 11.9102V14.7227ZM10.2109 11.7578C10.2109 9.92188 9.95312 8.58594 9.4375 7.75C8.92188 6.90625 8.10547 6.48438 6.98828 6.48438C5.87891 6.48438 5.07031 6.90234 4.5625 7.73828C4.05469 8.57422 3.79297 9.85938 3.77734 11.5938V15.0625C3.77734 16.9062 4.04297 18.2695 4.57422 19.1523C5.11328 20.0273 5.92578 20.4648 7.01172 20.4648C8.08203 20.4648 8.875 20.0508 9.39062 19.2227C9.91406 18.3945 10.1875 17.0898 10.2109 15.3086V11.7578Z" fill="#2496FF"/>
+<defs>
+<filter id="filter0_dd" x="56" y="90" width="152" height="98" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"/>
+<feOffset dy="4"/>
+<feGaussianBlur stdDeviation="2"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"/>
+<feOffset dy="4"/>
+<feGaussianBlur stdDeviation="2"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
+<feBlend mode="normal" in2="effect1_dropShadow" result="effect2_dropShadow"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect2_dropShadow" result="shape"/>
+</filter>
+</defs>
+</svg>
+ `
+)});
+  main.variable(observer("NAND0")).define("NAN0", ["brickSize"], function(brickSize){return(
+`<svg width=${brickSize} height=${brickSize} viewBox="0 0 234 237" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M223.931 145.104V123.896C227.831 123.885 230.989 120.727 231 116.828V95.6205C230.989 91.7211 227.831 88.5628 223.931 88.5516V67.3449C227.831 67.3333 230.989 64.1754 231 60.276V39.0689C230.989 35.1695 227.831 32.0112 223.931 32H192.121C188.221 32.0112 185.063 35.1695 185.052 39.0689H163.845C163.833 35.1695 160.675 32.0112 156.776 32H33.0689C29.1695 32.0112 26.0112 35.1695 26 39.0689V60.276C26.0116 64.1754 29.1695 67.3337 33.0689 67.3449V88.552C29.1695 88.5632 26.0112 91.7215 26 95.6209V116.828C26.0116 120.727 29.1695 123.886 33.0689 123.897V145.104C29.1695 145.115 26.0112 148.273 26 152.172V173.38C26.0116 177.279 29.1695 180.437 33.0689 180.448V201.656C29.1695 201.667 26.0112 204.825 26 208.724V229.931C26.0116 233.831 29.1695 236.989 33.0689 237H64.8791C68.7785 236.988 71.9368 233.831 71.948 229.931H93.1551C93.1667 233.831 96.3246 236.989 100.224 237H223.931C227.831 236.988 230.989 233.831 231 229.931V208.724C230.989 204.825 227.831 201.666 223.931 201.655V180.448C227.831 180.436 230.989 177.279 231 173.379V152.172C230.989 148.273 227.831 145.115 223.931 145.104Z" fill="#FCCC88"/>
+<path d="M33.0689 32H156.776C160.68 32 163.845 35.1647 163.845 39.0689V60.276C163.845 64.1802 160.68 67.3449 156.776 67.3449H33.0689C29.1647 67.3449 26 64.1798 26 60.276V39.0689C26 35.1647 29.1647 32 33.0689 32Z" fill="#CD4F38"/>
+<path d="M192.121 32H223.931C227.835 32 231 35.1647 231 39.0689V60.276C231 64.1802 227.835 67.3449 223.931 67.3449H192.121C188.217 67.3449 185.052 64.1802 185.052 60.276V39.0689C185.052 35.1647 188.217 32 192.121 32Z" fill="#DC6C33"/>
+<path d="M100.224 201.655H223.931C227.835 201.655 231 204.82 231 208.724V229.931C231 233.835 227.835 237 223.931 237H100.224C96.3197 237 93.155 233.835 93.155 229.931V208.724C93.155 204.82 96.3201 201.655 100.224 201.655Z" fill="#CD4F38"/>
+<path d="M33.0689 201.655H64.8791C68.7833 201.655 71.948 204.82 71.948 208.724V229.931C71.948 233.835 68.7833 237 64.8791 237H33.0689C29.1647 237 26 233.835 26 229.931V208.724C26 204.82 29.1647 201.655 33.0689 201.655Z" fill="#DC6C33"/>
+<path d="M33.0689 145.104H156.776C160.68 145.104 163.845 148.269 163.845 152.172V173.379C163.845 177.284 160.68 180.448 156.776 180.448H33.0689C29.1647 180.448 26 177.283 26 173.379V152.172C26 148.268 29.1647 145.104 33.0689 145.104Z" fill="#DC6C33"/>
+<path d="M192.121 145.104H223.931C227.835 145.104 231 148.269 231 152.172V173.379C231 177.284 227.835 180.448 223.931 180.448H192.121C188.217 180.448 185.052 177.284 185.052 173.379V152.172C185.052 148.268 188.217 145.104 192.121 145.104Z" fill="#CD4F38"/>
+<path d="M100.224 88.5515H223.931C227.835 88.5515 231 91.7162 231 95.6204V116.828C231 120.732 227.835 123.896 223.931 123.896H100.224C96.3197 123.896 93.155 120.732 93.155 116.828V95.6204C93.155 91.7166 96.3201 88.5515 100.224 88.5515Z" fill="#ED634C"/>
+<path d="M33.0689 88.5515H64.8791C68.7833 88.5515 71.948 91.7162 71.948 95.6204V116.828C71.948 120.732 68.7833 123.896 64.8791 123.896H33.0689C29.1647 123.896 26 120.732 26 116.828V95.6204C26 91.7166 29.1647 88.5515 33.0689 88.5515Z" fill="#EC9130"/>
+<path d="M33.0689 32H156.776C160.68 32 163.845 35.1647 163.845 39.0689V60.276C163.845 64.1802 160.68 67.3449 156.776 67.3449H33.0689C29.1647 67.3449 26 64.1798 26 60.276V39.0689C26 35.1647 29.1647 32 33.0689 32Z" fill="#CD4F38"/>
+<path d="M192.121 32H223.931C227.835 32 231 35.1647 231 39.0689V60.276C231 64.1802 227.835 67.3449 223.931 67.3449H192.121C188.217 67.3449 185.052 64.1802 185.052 60.276V39.0689C185.052 35.1647 188.217 32 192.121 32Z" fill="#EC9130"/>
+<path d="M100.224 201.655H223.931C227.835 201.655 231 204.82 231 208.724V229.931C231 233.835 227.835 237 223.931 237H100.224C96.3197 237 93.155 233.835 93.155 229.931V208.724C93.155 204.82 96.3201 201.655 100.224 201.655Z" fill="#CD4F38"/>
+<path d="M33.0689 201.655H64.8791C68.7833 201.655 71.948 204.82 71.948 208.724V229.931C71.948 233.835 68.7833 237 64.8791 237H33.0689C29.1647 237 26 233.835 26 229.931V208.724C26 204.82 29.1647 201.655 33.0689 201.655Z" fill="#DC6C33"/>
+<path d="M33.0689 145.104H156.776C160.68 145.104 163.845 148.269 163.845 152.172V173.379C163.845 177.284 160.68 180.448 156.776 180.448H33.0689C29.1647 180.448 26 177.283 26 173.379V152.172C26 148.268 29.1647 145.104 33.0689 145.104Z" fill="#DC6C33"/>
+<path d="M192.121 145.104H223.931C227.835 145.104 231 148.269 231 152.172V173.379C231 177.284 227.835 180.448 223.931 180.448H192.121C188.217 180.448 185.052 177.284 185.052 173.379V152.172C185.052 148.268 188.217 145.104 192.121 145.104Z" fill="#CD4F38"/>
+<path d="M100.224 88.5515H223.931C227.835 88.5515 231 91.7162 231 95.6204V116.828C231 120.732 227.835 123.896 223.931 123.896H100.224C96.3197 123.896 93.155 120.732 93.155 116.828V95.6204C93.155 91.7166 96.3201 88.5515 100.224 88.5515Z" fill="#DC6C33"/>
+<path d="M33.0689 88.5515H64.8791C68.7833 88.5515 71.948 91.7162 71.948 95.6204V116.828C71.948 120.732 68.7833 123.896 64.8791 123.896H33.0689C29.1647 123.896 26 120.732 26 116.828V95.6204C26 91.7166 29.1647 88.5515 33.0689 88.5515Z" fill="#EC9130"/>
+<g filter="url(#filter0_dd)">
+<rect x="60" y="90" width="144" height="90" fill="#C4C4C4"/>
+</g>
+<path d="M104.764 143H101.371L88.4863 123.277V143H85.0938V117.406H88.4863L101.406 137.217V117.406H104.764V143ZM125.207 136.32H114.484L112.076 143H108.596L118.369 117.406H121.322L131.113 143H127.65L125.207 136.32ZM115.504 133.543H124.205L119.846 121.572L115.504 133.543ZM154.229 143H150.836L137.951 123.277V143H134.559V117.406H137.951L150.871 137.217V117.406H154.229V143ZM160.223 143V117.406H167.447C169.674 117.406 171.643 117.898 173.354 118.883C175.064 119.867 176.383 121.268 177.309 123.084C178.246 124.9 178.721 126.986 178.732 129.342V130.977C178.732 133.391 178.264 135.506 177.326 137.322C176.4 139.139 175.07 140.533 173.336 141.506C171.613 142.479 169.604 142.977 167.307 143H160.223ZM163.598 120.184V140.24H167.148C169.75 140.24 171.771 139.432 173.213 137.814C174.666 136.197 175.393 133.895 175.393 130.906V129.412C175.393 126.506 174.707 124.25 173.336 122.645C171.977 121.027 170.043 120.207 167.535 120.184H163.598Z" fill="black"/>
+<path d="M16 170H60" stroke="black" stroke-width="5"/>
+<path d="M18 0V111H60" stroke="#2496FF" stroke-width="5"/>
+<line x1="204" y1="139" x2="234" y2="139" stroke="black" stroke-width="5"/>
+<path d="M12.3789 14.7227C12.3789 17.2617 11.9453 19.1484 11.0781 20.3828C10.2109 21.6172 8.85547 22.2344 7.01172 22.2344C5.19141 22.2344 3.84375 21.6328 2.96875 20.4297C2.09375 19.2188 1.64062 17.4141 1.60938 15.0156V12.1211C1.60938 9.61328 2.04297 7.75 2.91016 6.53125C3.77734 5.3125 5.13672 4.70312 6.98828 4.70312C8.82422 4.70312 10.1758 5.29297 11.043 6.47266C11.9102 7.64453 12.3555 9.45703 12.3789 11.9102V14.7227ZM10.2109 11.7578C10.2109 9.92188 9.95312 8.58594 9.4375 7.75C8.92188 6.90625 8.10547 6.48438 6.98828 6.48438C5.87891 6.48438 5.07031 6.90234 4.5625 7.73828C4.05469 8.57422 3.79297 9.85938 3.77734 11.5938V15.0625C3.77734 16.9062 4.04297 18.2695 4.57422 19.1523C5.11328 20.0273 5.92578 20.4648 7.01172 20.4648C8.08203 20.4648 8.875 20.0508 9.39062 19.2227C9.91406 18.3945 10.1875 17.0898 10.2109 15.3086V11.7578Z" fill="#2496FF"/>
+<defs>
+<filter id="filter0_dd" x="56" y="90" width="152" height="98" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"/>
+<feOffset dy="4"/>
+<feGaussianBlur stdDeviation="2"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"/>
+<feOffset dy="4"/>
+<feGaussianBlur stdDeviation="2"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
+<feBlend mode="normal" in2="effect1_dropShadow" result="effect2_dropShadow"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect2_dropShadow" result="shape"/>
+</filter>
+</defs>
+</svg>
+ `
+)});
+  main.variable(observer("d3")).define("d3", ["require"], function(require){return(
+require("d3@6")
+)});
   return main;
 }

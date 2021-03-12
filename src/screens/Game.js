@@ -1,13 +1,18 @@
 import React, { useState } from "react";
 import styled from "styled-components";
 import Fase from "../fase/Fase";
+import Chronometer from "./chronometer"
 import { maps } from "./maps.js";
 
 function Game() {
-  const [level, setLevel] = useState(0);
+  const [level, setLevel] = useState(1);
   const [hasCompleted, setHasCompleted] = useState(false);
   const [hasWon, setHasWon] = useState(false);
+  const [hasLost, setHasLost] = useState(false);
 
+  const youLose = () => {
+    setHasLost(true);
+  }
   const goToNextLevel = () => {
     setLevel(level + 1);
     setHasCompleted(false);
@@ -15,7 +20,7 @@ function Game() {
 
   const handleComplete = () => {
     if (!maps[level + 1]) {
-      setHasWon(true);
+      setTimeout(() => setHasWon(true), 2000);
       return;
     }
     setTimeout(() => setHasCompleted(true), 2000);
@@ -23,8 +28,9 @@ function Game() {
 
   return (
     <Container>
-      {!hasCompleted && !hasWon && (
+      {!hasCompleted && !hasWon && !hasLost &&(
         <FaseWrapper>
+          <Chronometer youLose={youLose} />
           <Fase
             map={maps[level]}
             onComplete={handleComplete}
@@ -33,6 +39,7 @@ function Game() {
       )}
       {hasCompleted && <ContinueButton onClick={goToNextLevel}>Próxima fase</ContinueButton>}
       {hasWon && <WinningText>Você ganhou!</WinningText>}
+      {hasLost && <WinningText>Você perdeu!</WinningText>}
     </Container>
   );
 }
